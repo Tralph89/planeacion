@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "CourseDocument": {
+      "title": "CourseDocument",
+      "description": "Represents a complete NEM curriculum course (Synthetic Program, Analytical Program, Codiseño, Lesson Plans, and Worksheets) owned by a teacher.",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "Unique identifier for the course.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the teacher who owns this course.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "nombreCurso": {
+          "type": "string",
+          "description": "Display title of the course (Subject, Grade, School).",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "pdfFileName": {
+          "type": "string",
+          "description": "Name of the uploaded Synthetic Program PDF file.",
+          "minLength": 0,
+          "maxLength": 240
+        },
+        "asignatura": {
+          "type": "string",
+          "description": "Subject or discipline name.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "grado": {
+          "type": "string",
+          "description": "School grade name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "escuelaNombre": {
+          "type": "string",
+          "description": "Official school name.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "cct": {
+          "type": "string",
+          "description": "School CCT code.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "docente": {
+          "type": "string",
+          "description": "Teacher full name.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "courseData": {
+          "type": "object",
+          "description": "Structured map containing escuela, diagnostico, contenidosSinteticos, vinculacion, bloquesDB, and planesDB."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the course was last updated."
+        }
+      },
+      "required": [
+        "courseId",
+        "ownerId",
+        "nombreCurso",
+        "pdfFileName",
+        "asignatura",
+        "grado",
+        "escuelaNombre",
+        "cct",
+        "docente",
+        "courseData",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/courses/{courseId}": {
+      "schema": "CourseDocument",
+      "description": "Stores teacher curriculum courses, analytical programs, lesson plans, and worksheets."
+    }
+  }
+}

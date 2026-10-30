@@ -74,11 +74,83 @@ window.AppController = {
       this.state.activeCourseId = "matematicas_3_alr";
     }
 
+    this.upgradeIncompleteCourseCatalogs();
     this.loadActiveCourseIntoState();
     this.bindEvents();
     this.renderCourseSelector();
     this.renderSidebar();
     this.renderMainView();
+  },
+
+  // Actualiza automáticamente cualquier curso existente que haya sido creado con catálogos incompletos (ej. Geografía con solo 3 contenidos)
+  upgradeIncompleteCourseCatalogs() {
+    let anyUpgraded = false;
+    Object.values(this.state.coursesDB || {}).forEach((course) => {
+      if (
+        !course ||
+        course.id === "matematicas_3_alr" ||
+        course.isPendingSetup ||
+        !course.escuela ||
+        course.escuela.asignatura === "Nueva Materia (Por definir)"
+      ) {
+        return;
+      }
+
+      const resolvedId = window.CatalogoSinteticoNEM.resolveMateriaId(
+        course.escuela.materiaId,
+        course.escuela.asignatura
+      );
+      const officialList = window.CatalogoSinteticoNEM.getContenidosForMateria(
+        resolvedId,
+        course.escuela.grado || "1° de Secundaria",
+        course.escuela.asignatura
+      );
+
+      const currentSinteticos = course.contenidosSinteticos || [];
+      if (officialList.length > 6 && currentSinteticos.length <= 6) {
+        course.escuela.materiaId = resolvedId;
+        course.contenidosSinteticos = officialList;
+
+        const municipio = course.escuela.municipio || "Guaymas, Sonora";
+        const grupos = course.escuela.grupos || "A, B";
+        const codisenoBlocks = (course.bloquesDB || []).filter((b) => Number(b.trimestre) === 4);
+
+        const bloquesNuevos = window.AIGenerator.normalizeBloquesAnalitico(
+          officialList.map((c, idx) => ({
+            trimestre: c.trimestreSugerido || ((idx % 3) + 1),
+            semanas: `Semanas ${idx * 2 + 1} y ${idx * 2 + 2}`,
+            numSemanas: c.semanasSugeridas || 2,
+            numSesiones: (c.semanasSugeridas || 2) * 5,
+            contenidoSintetico: c.contenido,
+            contenidoContextualizado: `${c.contenido} (Contextualizado en ${municipio})`,
+            pda: c.pda,
+            justificacion: `Contextualizado para responder a los intereses y necesidades de los grupos ${grupos}.`,
+            ejesArticuladores: c.ejesSugeridos
+          })),
+          course.escuela
+        );
+
+        const nuevosPlanes = { ...(course.planesDB || {}) };
+        bloquesNuevos.forEach((b) => {
+          nuevosPlanes[b.id] = window.AIGenerator.generateLocalPlanForBloque(course.escuela, b);
+        });
+
+        course.bloquesDB = [...bloquesNuevos, ...codisenoBlocks];
+        course.planesDB = nuevosPlanes;
+        course.pdfFileName = `Catálogo Oficial NEM Completo (${course.escuela.asignatura} - ${officialList.length} Contenidos)`;
+        anyUpgraded = true;
+
+        if (window.FirebaseDB && window.FirebaseDB.user) {
+          window.FirebaseDB.saveCourseToCloud(course);
+        }
+      }
+    });
+
+    if (anyUpgraded) {
+      try {
+        localStorage.setItem("nem_multi_courses_v2", JSON.stringify(this.state.coursesDB));
+      } catch (e) {}
+    }
   },
 
   buildDefaultMathCourse() {
@@ -155,6 +227,7 @@ window.AppController = {
   },
 
   loadActiveCourseIntoState() {
+    this.upgradeIncompleteCourseCatalogs();
     const course =
       this.state.coursesDB[this.state.activeCourseId] ||
       this.state.coursesDB["matematicas_3_alr"];
@@ -214,10 +287,6 @@ window.AppController = {
     }
     const baseEsc = this.state.escuela || {};
     const newId = `curso_${Date.now()}`;
-    const nuevaMateriaId = "espanol";
-    const nuevaAsignatura = "Español (Lengua Materna)";
-    const nuevoGrado = "1° de Secundaria";
-    const nuevoCampo = "Lenguajes";
 
     const nuevaEscuela = {
       nombre: baseEsc.nombre || "Escuela Secundaria General Abelardo L. Rodríguez",
@@ -225,69 +294,65 @@ window.AppController = {
       docente: baseEsc.docente || "Prof. José Rafael Leyva García",
       turno: baseEsc.turno || "Vespertino",
       fase: "Fase 6",
-      grado: nuevoGrado,
-      grupos: "1°A, 1°B",
-      campoFormativo: nuevoCampo,
-      materiaId: nuevaMateriaId,
-      asignatura: nuevaAsignatura,
+      grado: "Grado por definir",
+      grupos: "Grupos por definir",
+      campoFormativo: "Campo Formativo por definir",
+      materiaId: "",
+      asignatura: "Nueva Materia (Por definir)",
       municipio: baseEsc.municipio || "Guaymas, Sonora",
       cicloEscolar: baseEsc.cicloEscolar || "2025-2026"
     };
 
-    const contenidos = window.CatalogoSinteticoNEM.getContenidosForMateria(
-      nuevaMateriaId,
-      nuevoGrado
-    );
-
     const diagnostico = {
-      comunidad: `La escuela ${nuevaEscuela.nombre} (CCT ${nuevaEscuela.cct}), ubicada en ${nuevaEscuela.municipio}, atiende a los grupos ${nuevaEscuela.grupos} del turno ${nuevaEscuela.turno} en ${nuevaEscuela.grado} (${nuevaEscuela.fase}). El contexto sociocultural y productivo de la localidad permite vincular los Procesos de Desarrollo de Aprendizaje (PDA) de ${nuevaEscuela.asignatura} con situaciones reales de los estudiantes.`,
+      comunidad:
+        "Pendiente de configurar: Selecciona y guarda los datos de Escuela, Docente, Grado y Materia en el Paso 1A para generar el Diagnóstico Socioeducativo.",
       areasPrioritarias: [
         {
-          titulo: `1. Dominio de PDAs en ${nuevaEscuela.asignatura}`,
-          descripcion: `Fortalecer las habilidades fundamentales de ${nuevaEscuela.asignatura} mediante actividades contextualizadas.`
+          titulo: "1. Área Prioritaria por Definir",
+          descripcion: "Se actualizará automáticamente al guardar los datos de la materia y grado en el Paso 1A."
         },
         {
-          titulo: "2. Comprensión Lectora, Argumentación y Pensamiento Crítico",
-          descripcion: "Impulsar el análisis de fuentes, la expresión oral y escrita y la resolución colaborativa de problemas."
+          titulo: "2. Comprensión, Análisis y Pensamiento Crítico",
+          descripcion: "Se contextualizará de acuerdo con la disciplina y el municipio seleccionados."
         },
         {
-          titulo: "3. Vinculación con la Comunidad y Evaluación Formativa",
-          descripcion: "Relacionar cada secuencia con retos reales del entorno escolar y familiar."
+          titulo: "3. Vinculación Comunitaria y Evaluación Formativa",
+          descripcion: "Se adaptará a las características de los grupos que atiendes."
         }
       ]
     };
 
-    const bloquesIniciales = window.AIGenerator.normalizeBloquesAnalitico(
-      contenidos.map((c, idx) => ({
-        trimestre: c.trimestreSugerido || ((idx % 3) + 1),
-        semanas: `Semanas ${idx * 2 + 1} y ${idx * 2 + 2}`,
-        numSemanas: c.semanasSugeridas || 2,
-        numSesiones: (c.semanasSugeridas || 2) * 5,
-        contenidoSintetico: c.contenido,
-        contenidoContextualizado: `${c.contenido} (Contextualizado en ${nuevaEscuela.municipio})`,
-        pda: c.pda,
-        justificacion: `Contextualizado para responder a los intereses y necesidades de los grupos ${nuevaEscuela.grupos}.`,
-        ejesArticuladores: c.ejesSugeridos
-      })),
-      nuevaEscuela
-    );
+    const bloqueGenerico = {
+      id: "B01",
+      trimestre: 1,
+      semanas: "Semana 1",
+      numSemanas: 1,
+      numSesiones: 5,
+      periodoSugerido: `Ciclo Escolar ${nuevaEscuela.cicloEscolar}`,
+      contenidoSintetico: "Pendiente de definir Materia y Programa Sintético en el Paso 1",
+      contenidoContextualizado: "Configura y guarda los datos de Escuela, Docente y Materia en el Paso 1A",
+      pda: "Selecciona la materia y guarda los datos en el Paso 1A para cargar sus Procesos de Desarrollo de Aprendizaje (PDA).",
+      justificacion: "Pendiente de contextualización.",
+      ejesArticuladores: "Pensamiento crítico",
+      diagramType: "concept_map"
+    };
 
-    const planesIniciales = {};
-    bloquesIniciales.forEach((b) => {
-      planesIniciales[b.id] = window.AIGenerator.generateLocalPlanForBloque(nuevaEscuela, b);
-    });
+    const planesIniciales = {
+      B01: window.AIGenerator.generateLocalPlanForBloque(nuevaEscuela, bloqueGenerico)
+    };
 
     this.state.coursesDB[newId] = {
       id: newId,
-      nombreCurso: `${nuevaEscuela.asignatura} · ${nuevaEscuela.grado} (${nuevaEscuela.nombre})`,
-      pdfFileName: "Catálogo Oficial NEM (Listo para subir PDF)",
+      isPendingSetup: true,
+      nombreCurso: "Nueva Materia (Pendiente de guardar datos)",
+      pdfFileName: "Pendiente de seleccionar Materia o subir PDF",
       escuela: nuevaEscuela,
       diagnostico,
-      contenidosSinteticos: contenidos,
+      contenidosSinteticos: [],
       vinculacion: JSON.parse(
         JSON.stringify(window.ProgramaAnaliticoData.vinculacionTransversalDefault)
       ),
-      bloquesDB: bloquesIniciales,
+      bloquesDB: [bloqueGenerico],
       planesDB: planesIniciales
     };
 
@@ -299,35 +364,88 @@ window.AppController = {
     this.renderSidebar();
     this.switchSubView("sintetico");
     this.showToast(
-      "Nuevo curso creado. Configura los datos de Escuela, Docente, Materia y sube tu PDF en el Paso 1.",
+      "Nueva materia en blanco creada. Selecciona la Escuela, Docente, Grado y Materia y haz clic en 'Guardar Datos'.",
       "success"
     );
   },
 
   deleteActiveCourse() {
-    if (this.state.activeCourseId === "matematicas_3_alr") {
-      this.showToast(
-        "El curso base de Matemáticas 3° (Sec. Abelardo L. Rodríguez) está protegido y no se puede eliminar.",
-        "warning"
-      );
-      return;
-    }
+    const idToDelete = this.state.activeCourseId;
+    const nombreMateria = `${this.state.escuela?.asignatura || "Materia"} · ${this.state.escuela?.grado || ""}`;
+
     this.showConfirmModal({
-      title: "Eliminar este curso",
-      message: `¿Deseas eliminar el curso "${this.state.escuela.asignatura} · ${this.state.escuela.grado}"? Volverás automáticamente al curso principal de Matemáticas 3°.`,
-      confirmText: "Eliminar curso",
-      onConfirm: () => {
-        delete this.state.coursesDB[this.state.activeCourseId];
-        this.state.activeCourseId = "matematicas_3_alr";
-        localStorage.setItem("nem_active_course_id_v2", "matematicas_3_alr");
+      title: `Borrar Materia: ${nombreMateria}`,
+      message: `¿Estás seguro de que deseas borrar la materia "${nombreMateria}" (${this.state.escuela?.nombre || ""})? Se eliminará del selector y de la base de datos.`,
+      confirmText: "Sí, borrar materia",
+      onConfirm: async () => {
+        delete this.state.coursesDB[idToDelete];
+
+        if (window.FirebaseDB && window.FirebaseDB.user) {
+          try {
+            await window.FirebaseDB.deleteCourseFromCloud(idToDelete);
+          } catch (e) {}
+        }
+
+        const remainingIds = Object.keys(this.state.coursesDB);
+        if (remainingIds.length > 0) {
+          this.state.activeCourseId = remainingIds[0];
+        } else {
+          // Si borró la última materia, crear una materia limpia para que el sistema nunca quede vacío
+          const defaultCourse = this.buildDefaultMathCourse();
+          this.state.coursesDB[defaultCourse.id] = defaultCourse;
+          this.state.activeCourseId = defaultCourse.id;
+        }
+
+        localStorage.setItem("nem_active_course_id_v2", this.state.activeCourseId);
         this.loadActiveCourseIntoState();
         this.saveStateToStorage();
         this.renderCourseSelector();
         this.renderSidebar();
         this.renderMainView();
-        this.showToast("Curso eliminado.", "success");
+        this.showToast(`Materia "${nombreMateria}" eliminada correctamente.`, "success");
       }
     });
+  },
+
+  handleCloudAuthAction() {
+    if (!window.FirebaseDB) {
+      this.showToast("Inicializando conexión con Firebase...", "warning");
+      return;
+    }
+    if (window.FirebaseDB.user) {
+      this.showConfirmModal({
+        title: `Base de Datos Conectada (${window.FirebaseDB.user.email || "Google"})`,
+        message: "Tus materias y planeaciones se guardan automáticamente en la base de datos en la nube (Firestore). ¿Deseas sincronizar todas tus materias ahora o cerrar sesión?",
+        confirmText: "Sincronizar Ahora con BD",
+        onConfirm: async () => {
+          await window.FirebaseDB.syncAllLocalCoursesToCloud();
+          this.showToast("Todas tus materias fueron guardadas en la Base de Datos en la nube.", "success");
+        }
+      });
+    } else {
+      window.FirebaseDB.signInWithGoogle();
+    }
+  },
+
+  updateCloudAuthUI(user) {
+    const btn = document.getElementById("cloudAuthButton");
+    if (!btn) return;
+    if (user) {
+      const shortEmail = (user.email || "Conectado").split("@")[0];
+      btn.textContent = `Cuenta activa (${shortEmail})`;
+      btn.title = `Guardado automático en la nube activo para ${user.email}. Tus planeaciones están disponibles en cualquier computadora.`;
+    } else {
+      btn.textContent = "Iniciar sesión (Guardar en mi cuenta)";
+      btn.title = "Inicia sesión con Google para guardar automáticamente tus planeaciones y abrirlas desde otra computadora";
+    }
+  },
+
+  updateCloudSyncBadge(statusText) {
+    const badge = document.getElementById("saveStatusBadge");
+    if (badge) {
+      badge.textContent = `${statusText} · ${this.state.lastSavedTime || ""}`;
+      badge.style.display = "inline-block";
+    }
   },
 
   // ================= NOTIFICACIONES TOAST Y MODAL INTEGRADO =================
@@ -415,6 +533,14 @@ window.AppController = {
       badge.style.display = "inline-block";
     }
     this.renderCourseSelector();
+
+    // Sincronización automática con Firebase Firestore si el usuario inició sesión
+    if (currentCourse && window.FirebaseDB && window.FirebaseDB.user) {
+      clearTimeout(this._cloudSaveTimer);
+      this._cloudSaveTimer = setTimeout(() => {
+        window.FirebaseDB.saveCourseToCloud(currentCourse).catch(() => {});
+      }, 900);
+    }
   },
 
   getCurrentBloque() {
@@ -557,37 +683,133 @@ window.AppController = {
       if (!isNaN(sIdx) && plan && plan.sesiones && plan.sesiones[sIdx]) {
         plan.sesiones[sIdx][key] = val;
       }
+    } else if (scope === "proyecto_meta") {
+      const key = el.dataset.field;
+      if (key && plan && plan.proyecto) {
+        plan.proyecto[key] = val;
+      }
+    } else if (scope === "proyecto_fase") {
+      const fIdx = parseInt(el.dataset.faseIdx, 10);
+      const key = el.dataset.field;
+      if (!isNaN(fIdx) && key && plan && plan.proyecto?.fases?.[fIdx]) {
+        plan.proyecto.fases[fIdx][key] = val;
+      }
     } else if (scope === "evaluacion") {
       const eIdx = parseInt(el.dataset.evalIdx, 10);
-      if (!isNaN(eIdx) && plan && plan.evaluacionFormativa) {
-        plan.evaluacionFormativa[eIdx] = val.replace(/^[a-z]\)\s*/i, "").trim();
+      const evalArr =
+        plan?.modalidad === "proyecto" && Array.isArray(plan?.proyecto?.evaluacionFormativa)
+          ? plan.proyecto.evaluacionFormativa
+          : plan?.evaluacionFormativa;
+      if (!isNaN(eIdx) && Array.isArray(evalArr)) {
+        evalArr[eIdx] = val.replace(/^[a-z]\)\s*/i, "").trim();
       }
     } else if (scope === "hoja") {
       const sIdx = parseInt(el.dataset.sessionIdx, 10);
       const key = el.dataset.field;
-      if (!isNaN(sIdx) && plan && plan.sesiones && plan.sesiones[sIdx]) {
-        if (!plan.sesiones[sIdx].hojaActividad) plan.sesiones[sIdx].hojaActividad = {};
-        plan.sesiones[sIdx].hojaActividad[key] = val;
+      const targetUnits = this.getActiveWorksheetUnits(plan);
+      if (!isNaN(sIdx) && targetUnits && targetUnits[sIdx]) {
+        if (!targetUnits[sIdx].hojaActividad) targetUnits[sIdx].hojaActividad = {};
+        targetUnits[sIdx].hojaActividad[key] = val;
       }
     } else if (scope === "ejercicio") {
       const sIdx = parseInt(el.dataset.sessionIdx, 10);
       const exIdx = parseInt(el.dataset.exerciseIdx, 10);
       const key = el.dataset.field;
+      const targetUnits = this.getActiveWorksheetUnits(plan);
       if (
         !isNaN(sIdx) &&
         !isNaN(exIdx) &&
-        plan &&
-        plan.sesiones?.[sIdx]?.hojaActividad?.ejercicios?.[exIdx]
+        targetUnits?.[sIdx]?.hojaActividad?.ejercicios?.[exIdx]
       ) {
         if (key === "respuesta") {
-          plan.sesiones[sIdx].hojaActividad.ejercicios[exIdx].respuesta = val
+          targetUnits[sIdx].hojaActividad.ejercicios[exIdx].respuesta = val
             .replace(/^Respuesta\s*\/\s*Guía Docente:\s*/i, "")
             .trim();
         } else {
-          plan.sesiones[sIdx].hojaActividad.ejercicios[exIdx][key] = val;
+          targetUnits[sIdx].hojaActividad.ejercicios[exIdx][key] = val;
         }
       }
     }
+  },
+
+  getActiveWorksheetUnits(plan) {
+    if (!plan) return [];
+    if (plan.modalidad === "proyecto" && plan.proyecto && Array.isArray(plan.proyecto.fases)) {
+      return plan.proyecto.fases;
+    }
+    return Array.isArray(plan.sesiones) ? plan.sesiones : [];
+  },
+
+  ensureProjectExistsOnPlan(plan, bloque) {
+    if (!plan) return;
+    const defaultMetId =
+      plan.metodologiaId ||
+      window.AIGenerator.getSuggestedMetodologiaId(
+        this.state.escuela?.campoFormativo,
+        this.state.escuela?.asignatura
+      );
+    plan.metodologiaId = defaultMetId;
+    if (!plan.proyecto || !Array.isArray(plan.proyecto.fases) || plan.proyecto.fases.length === 0) {
+      plan.proyecto = window.AIGenerator.generateLocalProyectoForBloque(
+        this.state.escuela,
+        bloque,
+        defaultMetId
+      );
+    }
+  },
+
+  switchPlanModalidad(nuevaModalidad) {
+    if (this.state.editMode) {
+      this.flushAllEditableFields();
+    }
+    const bloque = this.getCurrentBloque();
+    const plan = this.getCurrentPlan();
+    if (!plan || !bloque) return;
+
+    plan.modalidad = nuevaModalidad === "proyecto" ? "proyecto" : "sesiones";
+    if (plan.modalidad === "proyecto") {
+      this.ensureProjectExistsOnPlan(plan, bloque);
+    }
+
+    this.state.selectedSessionIndex = "all";
+    this.saveStateToStorage();
+    this.renderSidebar();
+    this.renderMainView();
+
+    const metObj = window.AIGenerator.metodologiasNEM[plan.metodologiaId] || window.AIGenerator.metodologiasNEM.steam;
+    this.showToast(
+      plan.modalidad === "proyecto"
+        ? `Bloque ${bloque.id} organizado por Proyecto NEM (${metObj.etiquetaCorta}). Las Hojas de Actividad del Paso 5 se adaptaron por Fase/Momento.`
+        : `Bloque ${bloque.id} organizado por Sesiones de Clase (Inicio / Desarrollo / Cierre).`,
+      "success"
+    );
+  },
+
+  changeProjectMetodologia(nuevaMetodologiaId) {
+    if (this.state.editMode) {
+      this.flushAllEditableFields();
+    }
+    const bloque = this.getCurrentBloque();
+    const plan = this.getCurrentPlan();
+    if (!plan || !bloque) return;
+
+    plan.modalidad = "proyecto";
+    plan.metodologiaId = nuevaMetodologiaId;
+    plan.proyecto = window.AIGenerator.generateLocalProyectoForBloque(
+      this.state.escuela,
+      bloque,
+      nuevaMetodologiaId
+    );
+    this.state.selectedSessionIndex = "all";
+    this.saveStateToStorage();
+    this.renderSidebar();
+    this.renderMainView();
+
+    const metObj = window.AIGenerator.metodologiasNEM[nuevaMetodologiaId] || window.AIGenerator.metodologiasNEM.steam;
+    this.showToast(
+      `Metodología cambiada a "${metObj.nombre}" (${plan.proyecto.fases.length} Fases/Momentos oficiales).`,
+      "success"
+    );
   },
 
   flushAllEditableFields() {
@@ -668,7 +890,14 @@ window.AppController = {
     listEl.innerHTML = bloques
       .map((b) => {
         const plan = this.state.planesDB[b.id];
+        const isProy = plan && plan.modalidad === "proyecto" && plan.proyecto?.fases;
+        const metCorta = isProy
+          ? window.AIGenerator.metodologiasNEM[plan.metodologiaId]?.etiquetaCorta || "Proyecto NEM"
+          : "";
         const numSes = plan && plan.sesiones ? plan.sesiones.length : b.numSesiones;
+        const badgeMod = isProy
+          ? `${metCorta} (${plan.proyecto.fases.length} fases)`
+          : `${numSes} ses.`;
         const isActive = b.id === this.state.selectedBloqueId;
         const trimLabel = b.trimestre <= 3 ? `Trim. ${b.trimestre}` : "Codiseño";
         return `
@@ -678,7 +907,7 @@ window.AppController = {
               <span aria-hidden="true">·</span>
               <span>${trimLabel}</span>
               <span aria-hidden="true">·</span>
-              <span>${numSes} ses.</span>
+              <span>${badgeMod}</span>
             </div>
             <div class="bloque-item-title">${b.contenidoSintetico}</div>
             <div class="bloque-item-pda">${b.pda}</div>
@@ -717,7 +946,8 @@ window.AppController = {
       this.flushAllEditableFields();
     }
     const plan = this.getCurrentPlan();
-    const total = plan && Array.isArray(plan.sesiones) ? plan.sesiones.length : 0;
+    const units = this.getActiveWorksheetUnits(plan);
+    const total = units.length;
     if (total === 0) return;
 
     let current = this.state.selectedSessionIndex;
@@ -781,8 +1011,13 @@ window.AppController = {
     const bloque = this.getCurrentBloque();
     const plan = this.getCurrentPlan();
     if (!plan) return;
-    if (!Array.isArray(plan.sesiones)) plan.sesiones = [];
 
+    if (plan.modalidad === "proyecto") {
+      this.addManualProjectPhase();
+      return;
+    }
+
+    if (!Array.isArray(plan.sesiones)) plan.sesiones = [];
     const nextNum = plan.sesiones.length + 1;
     const nueva = window.AIGenerator.generateContextualSession(
       bloque,
@@ -799,13 +1034,94 @@ window.AppController = {
     this.showToast(`Sesión ${nextNum} agregada al bloque ${bloque.id}.`, "success");
   },
 
+  addManualProjectPhase() {
+    if (this.state.editMode) {
+      this.flushAllEditableFields();
+    }
+    const bloque = this.getCurrentBloque();
+    const plan = this.getCurrentPlan();
+    if (!plan || !bloque) return;
+    this.ensureProjectExistsOnPlan(plan, bloque);
+
+    const nextNum = plan.proyecto.fases.length + 1;
+    const metObj =
+      window.AIGenerator.metodologiasNEM[plan.metodologiaId] ||
+      window.AIGenerator.metodologiasNEM.steam;
+    const faseInfo = {
+      faseClave: `Fase / Momento Adicional ${nextNum} · Profundización y Socialización`,
+      descripcion: "Profundización comunitaria y evaluación colaborativa del proyecto."
+    };
+
+    plan.proyecto.fases.push({
+      numero: nextNum,
+      faseClave: faseInfo.faseClave,
+      sesionesEstimadas: "1 sesión (50 min)",
+      actividades: `• Actividad de cierre o extensión del proyecto (${metObj.etiquetaCorta}) vinculada con "${bloque.contenidoContextualizado}".`,
+      evidencia: `Evidencia de la Fase ${nextNum} integrada al portafolio del proyecto.`,
+      recursos: "Materiales del proyecto y Hoja de Actividad de la Fase.",
+      hojaActividad: window.AIGenerator.buildDefaultPhaseWorksheet(
+        this.state.escuela,
+        bloque,
+        metObj,
+        faseInfo,
+        nextNum
+      )
+    });
+
+    this.saveStateToStorage();
+    this.renderSidebar();
+    this.renderMainView();
+    this.showToast(`Fase / Momento #${nextNum} agregado al proyecto del bloque ${bloque.id}.`, "success");
+  },
+
+  deleteProjectPhase(faseIdx) {
+    if (this.state.editMode) {
+      this.flushAllEditableFields();
+    }
+    const plan = this.getCurrentPlan();
+    const fases = plan?.proyecto?.fases;
+    if (!Array.isArray(fases)) return;
+    if (fases.length <= 1) {
+      this.showToast("El proyecto debe conservar al menos 1 Fase o Momento.", "warning");
+      return;
+    }
+
+    const target = fases[faseIdx];
+    this.showConfirmModal({
+      title: `Eliminar ${target?.faseClave || "Fase del Proyecto"}`,
+      message: `¿Deseas eliminar "${target?.faseClave || "esta fase"}" y su Hoja de Actividad del proyecto?`,
+      confirmText: "Eliminar Fase",
+      onConfirm: () => {
+        fases.splice(faseIdx, 1);
+        fases.forEach((f, idx) => {
+          f.numero = idx + 1;
+        });
+        if (this.state.selectedSessionIndex !== "all") {
+          this.state.selectedSessionIndex = Math.min(
+            this.state.selectedSessionIndex,
+            fases.length - 1
+          );
+        }
+        this.saveStateToStorage();
+        this.renderSidebar();
+        this.renderMainView();
+        this.showToast("Fase eliminada del proyecto.", "success");
+      }
+    });
+  },
+
   deleteSession(sessionIdx) {
     if (this.state.editMode) {
       this.flushAllEditableFields();
     }
     const bloque = this.getCurrentBloque();
     const plan = this.getCurrentPlan();
-    if (!plan || !Array.isArray(plan.sesiones)) return;
+    if (!plan) return;
+    if (plan.modalidad === "proyecto") {
+      this.deleteProjectPhase(sessionIdx);
+      return;
+    }
+    if (!Array.isArray(plan.sesiones)) return;
 
     if (plan.sesiones.length <= 1) {
       this.showToast("Cada bloque debe conservar al menos 1 sesión.", "warning");
@@ -839,21 +1155,22 @@ window.AppController = {
       this.flushAllEditableFields();
     }
     const plan = this.getCurrentPlan();
-    const ses = plan && plan.sesiones && plan.sesiones[sessionIdx];
-    if (!ses) return;
+    const units = this.getActiveWorksheetUnits(plan);
+    const unit = units?.[sessionIdx];
+    if (!unit) return;
 
-    if (!ses.hojaActividad) ses.hojaActividad = {};
-    if (!Array.isArray(ses.hojaActividad.ejercicios)) ses.hojaActividad.ejercicios = [];
+    if (!unit.hojaActividad) unit.hojaActividad = {};
+    if (!Array.isArray(unit.hojaActividad.ejercicios)) unit.hojaActividad.ejercicios = [];
 
-    const nextExNum = ses.hojaActividad.ejercicios.length + 1;
-    ses.hojaActividad.ejercicios.push({
+    const nextExNum = unit.hojaActividad.ejercicios.length + 1;
+    unit.hojaActividad.ejercicios.push({
       enunciado: `${nextExNum}. Nueva actividad contextualizada: Describe aquí el planteamiento o ejercicio para el alumno.`,
       respuesta: "Procedimiento o criterio de resolución esperada para la guía docente."
     });
 
     this.saveStateToStorage();
     this.renderMainView();
-    this.showToast(`Actividad #${nextExNum} añadida a la Sesión ${ses.numero}.`, "success");
+    this.showToast(`Actividad #${nextExNum} añadida a la Hoja #${unit.numero || sessionIdx + 1}.`, "success");
   },
 
   deleteExercise(sessionIdx, exerciseIdx) {
@@ -861,7 +1178,8 @@ window.AppController = {
       this.flushAllEditableFields();
     }
     const plan = this.getCurrentPlan();
-    const ejercicios = plan?.sesiones?.[sessionIdx]?.hojaActividad?.ejercicios;
+    const units = this.getActiveWorksheetUnits(plan);
+    const ejercicios = units?.[sessionIdx]?.hojaActividad?.ejercicios;
     if (!Array.isArray(ejercicios)) return;
 
     if (ejercicios.length <= 1) {
@@ -880,11 +1198,12 @@ window.AppController = {
       this.flushAllEditableFields();
     }
     const plan = this.getCurrentPlan();
-    const ses = plan?.sesiones?.[sessionIdx];
-    if (!ses) return;
+    const units = this.getActiveWorksheetUnits(plan);
+    const unit = units?.[sessionIdx];
+    if (!unit) return;
 
-    if (!ses.hojaActividad) ses.hojaActividad = {};
-    ses.hojaActividad.diagramType = newDiagramType;
+    if (!unit.hojaActividad) unit.hojaActividad = {};
+    unit.hojaActividad.diagramType = newDiagramType;
     this.saveStateToStorage();
     this.renderMainView();
     this.showToast("Esquema visual actualizado en la Hoja de Actividad.", "success");
@@ -896,9 +1215,13 @@ window.AppController = {
     }
     const plan = this.getCurrentPlan();
     if (!plan) return;
-    if (!Array.isArray(plan.evaluacionFormativa)) plan.evaluacionFormativa = [];
-
-    plan.evaluacionFormativa.push("Nuevo indicador de evaluación formativa del PDA.");
+    if (plan.modalidad === "proyecto" && plan.proyecto) {
+      if (!Array.isArray(plan.proyecto.evaluacionFormativa)) plan.proyecto.evaluacionFormativa = [];
+      plan.proyecto.evaluacionFormativa.push("Nuevo indicador de evaluación formativa del Proyecto NEM.");
+    } else {
+      if (!Array.isArray(plan.evaluacionFormativa)) plan.evaluacionFormativa = [];
+      plan.evaluacionFormativa.push("Nuevo indicador de evaluación formativa del PDA.");
+    }
     this.saveStateToStorage();
     this.renderMainView();
     this.showToast("Indicador de evaluación formativa agregado.", "success");
@@ -909,12 +1232,17 @@ window.AppController = {
       this.flushAllEditableFields();
     }
     const plan = this.getCurrentPlan();
-    if (!plan || !Array.isArray(plan.evaluacionFormativa)) return;
-    if (plan.evaluacionFormativa.length <= 1) {
+    if (!plan) return;
+    const evalArr =
+      plan.modalidad === "proyecto" && Array.isArray(plan.proyecto?.evaluacionFormativa)
+        ? plan.proyecto.evaluacionFormativa
+        : plan.evaluacionFormativa;
+    if (!Array.isArray(evalArr)) return;
+    if (evalArr.length <= 1) {
       this.showToast("Debe existir al menos un criterio de evaluación.", "warning");
       return;
     }
-    plan.evaluacionFormativa.splice(evalIdx, 1);
+    evalArr.splice(evalIdx, 1);
     this.saveStateToStorage();
     this.renderMainView();
     this.showToast("Indicador eliminado.", "success");
@@ -1066,16 +1394,22 @@ window.AppController = {
       )
       .join("");
 
-    const opcionesGrado = currentFaseObj.grados
-      .map((g) => `<option value="${g}" ${g === esc.grado ? "selected" : ""}>${g}</option>`)
-      .join("");
+    const isGenericGrado = !esc.grado || esc.grado === "Grado por definir";
+    const opcionesGrado =
+      `<option value="" ${isGenericGrado ? "selected" : ""}>-- Selecciona el Grado Escolar --</option>` +
+      currentFaseObj.grados
+        .map((g) => `<option value="${g}" ${!isGenericGrado && g === esc.grado ? "selected" : ""}>${g}</option>`)
+        .join("");
 
-    const opcionesMateria = currentFaseObj.materias
-      .map(
-        (m) =>
-          `<option value="${m.id}" ${m.id === esc.materiaId || m.nombre === esc.asignatura ? "selected" : ""}>${m.nombre} (${m.campoFormativo})</option>`
-      )
-      .join("");
+    const isGenericMateria = !esc.materiaId && (!esc.asignatura || esc.asignatura === "Nueva Materia (Por definir)");
+    const opcionesMateria =
+      `<option value="" ${isGenericMateria ? "selected" : ""}>-- Selecciona una Materia del Catálogo o escríbela abajo --</option>` +
+      currentFaseObj.materias
+        .map(
+          (m) =>
+            `<option value="${m.id}" ${!isGenericMateria && (m.id === esc.materiaId || m.nombre === esc.asignatura) ? "selected" : ""}>${m.nombre} (${m.campoFormativo})</option>`
+        )
+        .join("");
 
     const filasContenidos = (this.state.contenidosSinteticos || [])
       .map(
@@ -1119,6 +1453,13 @@ window.AppController = {
       )
       .join("");
 
+    const valAsignaturaInput =
+      esc.asignatura === "Nueva Materia (Por definir)" ? "" : esc.asignatura || "";
+    const valCampoInput =
+      esc.campoFormativo === "Campo Formativo por definir" ? "" : esc.campoFormativo || "";
+    const valGruposInput =
+      esc.grupos === "Grupos por definir" ? "" : esc.grupos || "";
+
     return `
       <div class="stage-guide-banner no-export">
         <div>
@@ -1127,8 +1468,6 @@ window.AppController = {
           <div class="stage-guide-desc">Configura los datos oficiales de identificación y carga el Programa Sintético en PDF (o desde el catálogo NEM) para alimentar todo el flujo.</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-outline" onclick="AppController.exportBackupJSON()">Respaldar Cursos (.json)</button>
-          <button class="btn btn-outline" onclick="AppController.triggerImportBackup()">Importar Respaldo (.json)</button>
           <button class="btn btn-primary" onclick="AppController.switchSubView('analitico')">
             Siguiente: 2. Programa Analítico →
           </button>
@@ -1141,14 +1480,17 @@ window.AppController = {
           <div>
             <h2 style="margin-bottom:2px;">Paso 1A · Datos de Identificación: Escuela, Docente, Clave CCT y Materia</h2>
             <p style="font-size:0.84rem;color:#475569;">
-              Estos datos encabezan automáticamente el Programa Analítico, el Codiseño, los Planes de Clase y las Hojas de Actividad, y guían el contexto de la IA.
+              Estos datos encabezan automáticamente el Programa Analítico, el Codiseño, los Planes de Clase y las Hojas de Actividad, y se guardan en la base de datos.
             </p>
           </div>
-          ${
-            this.state.activeCourseId !== "matematicas_3_alr"
-              ? `<button class="btn btn-danger-outline btn-sm" onclick="AppController.deleteActiveCourse()">Eliminar este Curso</button>`
-              : `<span style="font-size:0.76rem;font-weight:700;color:#8b1d41;background:#fdf2eb;padding:5px 10px;border-radius:6px;border:1px solid #f6d5c1;">Curso Principal Precargado (38 Semanas)</span>`
-          }
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-outline btn-sm" onclick="AppController.handleCloudAuthAction()">
+              ${window.FirebaseDB?.user ? "Sincronizar con Base de Datos Cloud" : "Conectar Base de Datos en la Nube"}
+            </button>
+            <button class="btn btn-danger-outline btn-sm" onclick="AppController.deleteActiveCourse()">
+              Borrar esta Materia (${esc.asignatura})
+            </button>
+          </div>
         </div>
 
         <div class="form-grid">
@@ -1188,15 +1530,15 @@ window.AppController = {
           </div>
           <div class="form-group">
             <label for="cfgAsignaturaCustom">Nombre de la Materia (Personalizable):</label>
-            <input id="cfgAsignaturaCustom" class="form-control" value="${esc.asignatura || "Matemáticas"}" />
+            <input id="cfgAsignaturaCustom" class="form-control" value="${valAsignaturaInput}" placeholder="Selecciona arriba o escribe el nombre de la materia..." />
           </div>
           <div class="form-group">
             <label for="cfgCampoFormativo">Campo Formativo:</label>
-            <input id="cfgCampoFormativo" class="form-control" value="${esc.campoFormativo || "Saberes y Pensamiento Científico"}" />
+            <input id="cfgCampoFormativo" class="form-control" value="${valCampoInput}" placeholder="Se completa al elegir materia o escríbelo..." />
           </div>
           <div class="form-group">
             <label for="cfgGrupos">Grupo(s) que atiende:</label>
-            <input id="cfgGrupos" class="form-control" value="${esc.grupos || ""}" placeholder="Ej. 3°G, 3°H" />
+            <input id="cfgGrupos" class="form-control" value="${valGruposInput}" placeholder="Ej. 1°A, 1°B o 3°G, 3°H" />
           </div>
           <div class="form-group">
             <label for="cfgTurno">Turno:</label>
@@ -1275,7 +1617,12 @@ window.AppController = {
               </tr>
             </thead>
             <tbody>
-              ${filasContenidos}
+              ${
+                filasContenidos ||
+                `<tr><td colspan="7" style="text-align:center;padding:20px;color:#64748b;">
+                  Aún no se han cargado contenidos para esta materia. Selecciona el <strong>Grado y Materia</strong> arriba y haz clic en <strong>"Guardar Datos de Escuela, Docente y Materia"</strong> (o sube tu PDF).
+                </td></tr>`
+              }
             </tbody>
           </table>
         </div>
@@ -1293,12 +1640,10 @@ window.AppController = {
     const fases = window.CatalogoSinteticoNEM.fases;
     const fObj = fases.find((f) => f.id === nuevaFaseId) || fases[0];
     this.state.escuela.fase = fObj.id;
-    this.state.escuela.grado = fObj.grados[0];
-    if (fObj.materias[0]) {
-      this.state.escuela.materiaId = fObj.materias[0].id;
-      this.state.escuela.asignatura = fObj.materias[0].nombre;
-      this.state.escuela.campoFormativo = fObj.materias[0].campoFormativo;
-    }
+    this.state.escuela.grado = "Grado por definir";
+    this.state.escuela.materiaId = "";
+    this.state.escuela.asignatura = "Nueva Materia (Por definir)";
+    this.state.escuela.campoFormativo = "Campo Formativo por definir";
     this.renderMainView();
   },
 
@@ -1306,14 +1651,14 @@ window.AppController = {
     const fases = window.CatalogoSinteticoNEM.fases;
     const fObj = fases.find((f) => f.id === this.state.escuela.fase) || fases[0];
     const mObj = fObj.materias.find((m) => m.id === materiaId);
+    const inputAsig = document.getElementById("cfgAsignaturaCustom");
+    const inputCampo = document.getElementById("cfgCampoFormativo");
     if (mObj) {
-      this.state.escuela.materiaId = mObj.id;
-      this.state.escuela.asignatura = mObj.nombre;
-      this.state.escuela.campoFormativo = mObj.campoFormativo;
-      const inputAsig = document.getElementById("cfgAsignaturaCustom");
-      const inputCampo = document.getElementById("cfgCampoFormativo");
       if (inputAsig) inputAsig.value = mObj.nombre;
       if (inputCampo) inputCampo.value = mObj.campoFormativo;
+    } else {
+      if (inputAsig) inputAsig.value = "";
+      if (inputCampo) inputCampo.value = "";
     }
   },
 
@@ -1324,38 +1669,201 @@ window.AppController = {
       return el ? el.value.trim() : fallback;
     };
 
-    this.state.escuela.nombre = getVal("cfgNombreEsc", this.state.escuela.nombre);
-    this.state.escuela.cct = getVal("cfgCCT", this.state.escuela.cct);
-    this.state.escuela.docente = getVal("cfgDocente", this.state.escuela.docente);
-    this.state.escuela.municipio = getVal("cfgMunicipio", this.state.escuela.municipio);
-    this.state.escuela.fase = getVal("cfgFase", this.state.escuela.fase);
-    this.state.escuela.grado = getVal("cfgGrado", this.state.escuela.grado);
-    this.state.escuela.materiaId = getVal("cfgMateriaSelect", this.state.escuela.materiaId);
-    this.state.escuela.asignatura = getVal("cfgAsignaturaCustom", this.state.escuela.asignatura);
-    this.state.escuela.campoFormativo = getVal("cfgCampoFormativo", this.state.escuela.campoFormativo);
-    this.state.escuela.grupos = getVal("cfgGrupos", this.state.escuela.grupos);
-    this.state.escuela.turno = getVal("cfgTurno", this.state.escuela.turno);
-    this.state.escuela.cicloEscolar = getVal("cfgCiclo", this.state.escuela.cicloEscolar);
+    const currentCourse = this.state.coursesDB[this.state.activeCourseId];
+    const prevMateriaId = this.state.escuela.materiaId;
+    const wasPending = Boolean(
+      currentCourse?.isPendingSetup ||
+        !this.state.contenidosSinteticos ||
+        this.state.contenidosSinteticos.length === 0
+    );
+
+    const nombreEsc = getVal("cfgNombreEsc", this.state.escuela.nombre) || "Escuela Secundaria";
+    const cct = getVal("cfgCCT", this.state.escuela.cct) || "26DES0010E";
+    const docente = getVal("cfgDocente", this.state.escuela.docente) || "Docente";
+    const municipio = getVal("cfgMunicipio", this.state.escuela.municipio) || "Guaymas, Sonora";
+    const fase = getVal("cfgFase", this.state.escuela.fase) || "Fase 6";
+
+    const fases = window.CatalogoSinteticoNEM.fases;
+    const fObj = fases.find((f) => f.id === fase) || fases[0];
+
+    const rawGrado = getVal("cfgGrado", "");
+    const grado =
+      rawGrado && rawGrado !== "Grado por definir"
+        ? rawGrado
+        : this.state.escuela.grado && this.state.escuela.grado !== "Grado por definir"
+        ? this.state.escuela.grado
+        : fObj.grados[0];
+
+    const materiaId = getVal("cfgMateriaSelect", this.state.escuela.materiaId);
+    const mObj = fObj.materias.find((m) => m.id === materiaId);
+
+    const rawAsignatura = getVal("cfgAsignaturaCustom", "");
+    const asignatura =
+      rawAsignatura && rawAsignatura !== "Nueva Materia (Por definir)"
+        ? rawAsignatura
+        : mObj
+        ? mObj.nombre
+        : "Asignatura General";
+
+    const rawCampo = getVal("cfgCampoFormativo", "");
+    const campoFormativo =
+      rawCampo && rawCampo !== "Campo Formativo por definir"
+        ? rawCampo
+        : mObj
+        ? mObj.campoFormativo
+        : "Saberes y Pensamiento Científico";
+
+    const rawGrupos = getVal("cfgGrupos", "");
+    const grupos =
+      rawGrupos && rawGrupos !== "Grupos por definir" ? rawGrupos : "A, B";
+
+    const turno = getVal("cfgTurno", this.state.escuela.turno) || "Matutino";
+    const cicloEscolar = getVal("cfgCiclo", this.state.escuela.cicloEscolar) || "2025-2026";
+
+    this.state.escuela.nombre = nombreEsc;
+    this.state.escuela.cct = cct;
+    this.state.escuela.docente = docente;
+    this.state.escuela.municipio = municipio;
+    this.state.escuela.fase = fase;
+    this.state.escuela.grado = grado;
+    this.state.escuela.materiaId = materiaId;
+    this.state.escuela.asignatura = asignatura;
+    this.state.escuela.campoFormativo = campoFormativo;
+    this.state.escuela.grupos = grupos;
+    this.state.escuela.turno = turno;
+    this.state.escuela.cicloEscolar = cicloEscolar;
+
+    const resolvedMateriaId = window.CatalogoSinteticoNEM.resolveMateriaId(materiaId, asignatura);
+    this.state.escuela.materiaId = resolvedMateriaId;
+
+    const nuevosContenidosCatalogo = window.CatalogoSinteticoNEM.getContenidosForMateria(
+      resolvedMateriaId,
+      grado,
+      asignatura
+    );
+    const hadIncompleteCatalog =
+      this.state.activeCourseId !== "matematicas_3_alr" &&
+      (this.state.contenidosSinteticos || []).length < nuevosContenidosCatalogo.length;
+
+    // Si era una materia nueva pendiente de configurar, cambió de materia o tenía un catálogo incompleto, inicializar todos sus contenidos oficiales, diagnóstico y bloques
+    if (
+      wasPending ||
+      hadIncompleteCatalog ||
+      (resolvedMateriaId && resolvedMateriaId !== prevMateriaId && this.state.activeCourseId !== "matematicas_3_alr")
+    ) {
+      this.state.contenidosSinteticos = nuevosContenidosCatalogo;
+
+      this.state.diagnostico = {
+        comunidad: `La escuela ${nombreEsc} (CCT ${cct}), ubicada en ${municipio}, atiende a los grupos ${grupos} del turno ${turno} en ${grado} (${fase}). El contexto sociocultural y productivo de la localidad permite vincular los Procesos de Desarrollo de Aprendizaje (PDA) de ${asignatura} (${campoFormativo}) con situaciones reales de los estudiantes.`,
+        areasPrioritarias: [
+          {
+            titulo: `1. Dominio de PDAs en ${asignatura}`,
+            descripcion: `Fortalecer las habilidades fundamentales de ${asignatura} en ${grado} mediante actividades contextualizadas.`
+          },
+          {
+            titulo: "2. Comprensión, Análisis y Pensamiento Crítico",
+            descripcion: "Impulsar el análisis de información, la argumentación y la resolución colaborativa de problemas."
+          },
+          {
+            titulo: "3. Vinculación Comunitaria y Evaluación Formativa",
+            descripcion: `Relacionar cada secuencia con retos reales del entorno escolar en ${municipio}.`
+          }
+        ]
+      };
+
+      const codisenoBlocks = (this.state.bloquesDB || []).filter((b) => Number(b.trimestre) === 4);
+      const bloquesIniciales = window.AIGenerator.normalizeBloquesAnalitico(
+        nuevosContenidosCatalogo.map((c, idx) => ({
+          trimestre: c.trimestreSugerido || ((idx % 3) + 1),
+          semanas: `Semanas ${idx * 2 + 1} y ${idx * 2 + 2}`,
+          numSemanas: c.semanasSugeridas || 2,
+          numSesiones: (c.semanasSugeridas || 2) * 5,
+          contenidoSintetico: c.contenido,
+          contenidoContextualizado: `${c.contenido} (Contextualizado en ${municipio})`,
+          pda: c.pda,
+          justificacion: `Contextualizado para responder a los intereses y necesidades de los grupos ${grupos}.`,
+          ejesArticuladores: c.ejesSugeridos
+        })),
+        this.state.escuela
+      );
+
+      const planesIniciales = { ...(this.state.planesDB || {}) };
+      bloquesIniciales.forEach((b) => {
+        planesIniciales[b.id] = window.AIGenerator.generateLocalPlanForBloque(this.state.escuela, b);
+      });
+
+      this.state.bloquesDB = [...bloquesIniciales, ...codisenoBlocks];
+      this.state.planesDB = planesIniciales;
+      this.state.selectedBloqueId = bloquesIniciales[0]?.id || "B01";
+      if (currentCourse) {
+        currentCourse.isPendingSetup = false;
+        currentCourse.pdfFileName = `Catálogo Oficial NEM Completo (${asignatura} - ${nuevosContenidosCatalogo.length} Contenidos)`;
+      }
+    }
 
     this.saveStateToStorage();
+    this.renderSidebar();
     this.renderMainView();
     this.showToast(
-      `Datos actualizados: ${this.state.escuela.asignatura} (${this.state.escuela.grado}) · ${this.state.escuela.nombre}.`,
+      `Datos guardados: ${this.state.escuela.asignatura} (${this.state.escuela.grado}) · ${this.state.contenidosSinteticos.length} contenidos oficiales cargados.`,
       "success"
     );
   },
 
   loadCatalogSinteticoForCurrentSubject() {
     this.saveSchoolConfig();
-    const nuevos = window.CatalogoSinteticoNEM.getContenidosForMateria(
+    const resolvedId = window.CatalogoSinteticoNEM.resolveMateriaId(
       this.state.escuela.materiaId,
-      this.state.escuela.grado
+      this.state.escuela.asignatura
+    );
+    const nuevos = window.CatalogoSinteticoNEM.getContenidosForMateria(
+      resolvedId,
+      this.state.escuela.grado,
+      this.state.escuela.asignatura
     );
     this.state.contenidosSinteticos = nuevos;
+
+    if (this.state.activeCourseId !== "matematicas_3_alr") {
+      const municipio = this.state.escuela.municipio || "Guaymas, Sonora";
+      const grupos = this.state.escuela.grupos || "A, B";
+      const codisenoBlocks = (this.state.bloquesDB || []).filter((b) => Number(b.trimestre) === 4);
+
+      const bloquesActualizados = window.AIGenerator.normalizeBloquesAnalitico(
+        nuevos.map((c, idx) => ({
+          trimestre: c.trimestreSugerido || ((idx % 3) + 1),
+          semanas: `Semanas ${idx * 2 + 1} y ${idx * 2 + 2}`,
+          numSemanas: c.semanasSugeridas || 2,
+          numSesiones: (c.semanasSugeridas || 2) * 5,
+          contenidoSintetico: c.contenido,
+          contenidoContextualizado: `${c.contenido} (Contextualizado en ${municipio})`,
+          pda: c.pda,
+          justificacion: `Contextualizado para responder a los intereses y necesidades de los grupos ${grupos}.`,
+          ejesArticuladores: c.ejesSugeridos
+        })),
+        this.state.escuela
+      );
+
+      const planesActualizados = { ...(this.state.planesDB || {}) };
+      bloquesActualizados.forEach((b) => {
+        planesActualizados[b.id] = window.AIGenerator.generateLocalPlanForBloque(this.state.escuela, b);
+      });
+
+      this.state.bloquesDB = [...bloquesActualizados, ...codisenoBlocks];
+      this.state.planesDB = planesActualizados;
+      this.state.selectedBloqueId = bloquesActualizados[0]?.id || "B01";
+
+      const currentCourse = this.state.coursesDB[this.state.activeCourseId];
+      if (currentCourse) {
+        currentCourse.isPendingSetup = false;
+        currentCourse.pdfFileName = `Catálogo Oficial NEM Completo (${this.state.escuela.asignatura} - ${nuevos.length} Contenidos)`;
+      }
+    }
+
     this.saveStateToStorage();
+    this.renderSidebar();
     this.renderMainView();
     this.showToast(
-      `Se cargaron ${nuevos.length} contenidos oficiales de ${this.state.escuela.asignatura}.`,
+      `Se cargaron los ${nuevos.length} Contenidos y PDAs oficiales completos de ${this.state.escuela.asignatura}.`,
       "success"
     );
   },
@@ -1888,19 +2396,48 @@ window.AppController = {
   renderToolbar(bloque, mode) {
     const docTargetId = mode === "planeacion" ? "printableDocumentArea" : "printableWorksheetsArea";
     const asigClean = (this.state.escuela.asignatura || "Matematicas").replace(/\s+/g, "_");
+    const plan = this.getCurrentPlan();
+    const isProjectMode = Boolean(
+      plan && plan.modalidad === "proyecto" && plan.proyecto && Array.isArray(plan.proyecto.fases)
+    );
+    const metObj = isProjectMode
+      ? window.AIGenerator.metodologiasNEM[plan.metodologiaId] || window.AIGenerator.metodologiasNEM.steam
+      : null;
+
+    const totalSesiones = plan && plan.sesiones ? plan.sesiones.length : 5;
+    const totalFases = isProjectMode ? plan.proyecto.fases.length : 0;
+    const totalUnits = isProjectMode ? totalFases : totalSesiones;
+
     const filePrefix =
       mode === "planeacion"
-        ? `Planeacion_${asigClean}_${bloque.id}_${bloque.semanas.replace(/\s+/g, "_")}`
+        ? isProjectMode
+          ? `Proyecto_NEM_${metObj.id.toUpperCase()}_${asigClean}_${bloque.id}`
+          : `Planeacion_${asigClean}_${bloque.id}_${bloque.semanas.replace(/\s+/g, "_")}`
+        : isProjectMode
+        ? `Hojas_Proyecto_${metObj.id.toUpperCase()}_${asigClean}_${bloque.id}`
         : `Hojas_Actividad_${asigClean}_${bloque.id}_${bloque.semanas.replace(/\s+/g, "_")}`;
 
-    const plan = this.getCurrentPlan();
-    const totalSesiones = plan && plan.sesiones ? plan.sesiones.length : 5;
+    const kickerLabel = isProjectMode
+      ? `BLOQUE ${bloque.id} · PROYECTO ${metObj.etiquetaCorta.toUpperCase()} (${totalFases} FASES/MOMENTOS)`
+      : `BLOQUE ${bloque.id} · ${bloque.semanas.toUpperCase()} (${totalSesiones} SESIONES)`;
+
+    const nextStepBtnLabel = isProjectMode
+      ? `Pasar a 5. Hojas por Fase del Proyecto (${totalFases}) →`
+      : `Pasar a 5. Hojas de Actividad (${totalSesiones}) →`;
+
+    const backStepBtnLabel = isProjectMode
+      ? `← Volver a 4. Proyecto NEM (${metObj.etiquetaCorta})`
+      : `← Volver a 4. Plan de Clase`;
+
+    const addManualBtnLabel = isProjectMode
+      ? "+ Agregar Fase / Momento al Proyecto"
+      : "+ Agregar Sesión al Bloque";
 
     return `
       <div class="action-toolbar no-export">
         <div class="toolbar-group">
           <div class="toolbar-block-indicator">
-            <span class="toolbar-block-kicker">BLOQUE ${bloque.id} · ${bloque.semanas.toUpperCase()} (${totalSesiones} SESIONES)</span>
+            <span class="toolbar-block-kicker">${kickerLabel}</span>
             ${
               mode === "hojas"
                 ? `<select class="form-control" style="padding:3px 8px;font-size:0.8rem;font-weight:700;max-width:290px;" onchange="AppController.selectBloque(this.value)">
@@ -1916,8 +2453,8 @@ window.AppController = {
           </div>
           ${
             mode === "planeacion"
-              ? `<button class="btn btn-outline" onclick="AppController.switchSubView('hojas')">Pasar a 5. Hojas de Actividad (${totalSesiones}) →</button>`
-              : `<button class="btn btn-outline" onclick="AppController.switchSubView('planeacion')">← Volver a 4. Plan de Clase</button>`
+              ? `<button class="btn btn-outline" onclick="AppController.switchSubView('hojas')">${nextStepBtnLabel}</button>`
+              : `<button class="btn btn-outline" onclick="AppController.switchSubView('planeacion')">${backStepBtnLabel}</button>`
           }
           <button class="btn ${this.state.editMode ? "btn-save-edit" : "btn-outline"}" onclick="AppController.toggleEditMode()">
             ${this.state.editMode ? "Guardar y Salir de Edición" : "Editar Contenido"}
@@ -1939,9 +2476,6 @@ window.AppController = {
           </span>
         </div>
         <div class="toolbar-group">
-          <button class="btn btn-outline" onclick="AppController.exportBackupJSON()" title="Descargar copia de seguridad de todos tus cursos">
-            Respaldar (.json)
-          </button>
           <button class="btn btn-word" onclick="AppController.exportWordSafely('${docTargetId}', '${filePrefix}')">
             Descargar Word (.doc)
           </button>
@@ -1956,7 +2490,7 @@ window.AppController = {
         <div class="edit-banner no-export">
           <span><strong>Modo Edición Activo:</strong> Haz clic sobre cualquier texto recuadrado en azul para modificarlo. La IA respetará tus cambios en el siguiente paso.</span>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-outline btn-sm" onclick="AppController.addManualSession()">+ Agregar Sesión al Bloque</button>
+            <button class="btn btn-outline btn-sm" onclick="AppController.addManualSession()">${addManualBtnLabel}</button>
             <button class="btn btn-primary btn-sm" onclick="AppController.toggleEditMode()">Guardar y Finalizar</button>
           </div>
         </div>
@@ -2017,13 +2551,91 @@ window.AppController = {
   },
 
   // ============================================================================
-  // ETAPA 4: PLAN DE CLASE OFICIAL NEM (CON GENERACIÓN IA DESDE ANALÍTICO/CODISEÑO)
+  // ETAPA 4: PLAN DE CLASE OFICIAL NEM (POR SESIONES O POR PROYECTOS NEM)
   // ============================================================================
   renderPlaneacionView(bloque, plan) {
     const esc = this.state.escuela;
     const vinc = this.state.vinculacion;
 
+    const isProjectMode = plan.modalidad === "proyecto";
+    if (isProjectMode) {
+      this.ensureProjectExistsOnPlan(plan, bloque);
+    }
+
+    const metCatalog = window.AIGenerator.metodologiasNEM;
+    const suggestedMetId = window.AIGenerator.getSuggestedMetodologiaId(
+      esc.campoFormativo,
+      esc.asignatura
+    );
+    const activeMetId = plan.metodologiaId || suggestedMetId;
+    const activeMetObj = metCatalog[activeMetId] || metCatalog.steam;
+
+    // Selector superior de Modalidad (Por Sesiones de Clase vs. Por Proyectos Sociocríticos NEM)
+    const modeSwitcherHTML = `
+      <div class="plan-mode-switcher-bar no-export">
+        <div>
+          <div style="font-size:0.73rem;font-weight:800;color:#8b1d41;text-transform:uppercase;letter-spacing:0.04em;">
+            MODALIDAD DE ORGANIZACIÓN DIDÁCTICA DEL BLOQUE ${bloque.id}
+          </div>
+          <div style="font-size:0.84rem;color:#475569;margin-top:2px;">
+            Elige si deseas organizar este bloque por <strong>Sesiones de Clase (Inicio / Desarrollo / Cierre)</strong> o por <strong>Proyectos Sociocríticos de la NEM</strong>.
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div class="plan-mode-tabs" role="tablist" aria-label="Organización Didáctica">
+            <button
+              type="button"
+              class="plan-mode-btn ${!isProjectMode ? "active" : ""}"
+              onclick="AppController.switchPlanModalidad('sesiones')"
+            >
+              Por Sesiones de Clase (Inicio / Desarrollo / Cierre)
+            </button>
+            <button
+              type="button"
+              class="plan-mode-btn ${isProjectMode ? "active" : ""}"
+              onclick="AppController.switchPlanModalidad('proyecto')"
+            >
+              Por Proyecto NEM (Fases y Momentos Oficiales)
+            </button>
+          </div>
+
+          ${
+            isProjectMode
+              ? `
+            <div class="methodology-selector-box">
+              <label for="projectMethodologySelect" style="font-size:0.78rem;font-weight:800;color:#8b1d41;white-space:nowrap;">
+                Metodología NEM:
+              </label>
+              <select
+                id="projectMethodologySelect"
+                class="form-control"
+                style="width:auto;padding:5px 10px;font-size:0.81rem;font-weight:700;"
+                onchange="AppController.changeProjectMetodologia(this.value)"
+              >
+                ${Object.values(metCatalog)
+                  .map(
+                    (m) => `
+                  <option value="${m.id}" ${m.id === activeMetId ? "selected" : ""}>
+                    ${m.nombre} (${m.campoSugerido})
+                  </option>
+                `
+                  )
+                  .join("")}
+              </select>
+            </div>
+          `
+              : ""
+          }
+        </div>
+      </div>
+    `;
+
     const sesiones = plan.sesiones || [];
+    const proy = plan.proyecto || {};
+    const fasesProyecto = Array.isArray(proy.fases) ? proy.fases : [];
+
+    // Cuerpo central cuando está en Modalidad POR SESIONES DE CLASE
     const semanasMap = {};
     sesiones.forEach((s, i) => {
       const semNum = Math.floor(i / 5) + 1;
@@ -2110,7 +2722,125 @@ window.AppController = {
       })
       .join("");
 
-    const filasEvaluacion = (plan.evaluacionFormativa || [])
+    // Cuerpo central cuando está en Modalidad POR PROYECTO SOCIOCRÍTICO NEM
+    const filasFasesProyectoHTML = fasesProyecto
+      .map(
+        (fase, fIdx) => `
+        <tr>
+          <td class="session-col-num" style="width:185px;">
+            <div style="font-weight:800;color:#8b1d41;font-size:0.86rem;"
+              ${this.editAttr("proyecto_fase", "faseClave", `data-fase-idx="${fIdx}"`)}>
+              ${fase.faseClave}
+            </div>
+            <div style="font-size:0.75rem;color:#475569;font-weight:600;margin-top:4px;"
+              ${this.editAttr("proyecto_fase", "sesionesEstimadas", `data-fase-idx="${fIdx}"`)}>
+              ${fase.sesionesEstimadas || "2 sesiones (100 min)"}
+            </div>
+            <button class="btn btn-outline btn-sm no-export" style="margin-top:8px;width:100%;justify-content:center;"
+              onclick="AppController.openSessionWorksheet(${fIdx})">
+              Ver Hoja Fase #${fase.numero || fIdx + 1}
+            </button>
+            ${
+              this.state.editMode && fasesProyecto.length > 1
+                ? `
+              <button class="btn btn-danger-outline btn-sm no-export" style="margin-top:6px;width:100%;justify-content:center;"
+                onclick="AppController.deleteProjectPhase(${fIdx})">
+                Eliminar Fase
+              </button>
+            `
+                : ""
+            }
+          </td>
+          <td>
+            <div class="session-phase-block">
+              <span class="session-phase-title">Actividades de Indagación, Intervención Docente y Trabajo del Alumnado:</span>
+              <div ${this.editAttr("proyecto_fase", "actividades", `data-fase-idx="${fIdx}"`)}>
+                ${this.formatMultiline(fase.actividades)}
+              </div>
+            </div>
+            <div class="session-phase-block" style="margin-top:6px;">
+              <span class="session-phase-title">Evidencia / Entregable Parcial de la Fase:</span>
+              <div ${this.editAttr("proyecto_fase", "evidencia", `data-fase-idx="${fIdx}"`)}>
+                ${this.formatMultiline(fase.evidencia)}
+              </div>
+            </div>
+            <div class="session-phase-block" style="margin-top:6px;">
+              <span class="session-phase-title">Recursos y Materiales Didácticos:</span>
+              <div ${this.editAttr("proyecto_fase", "recursos", `data-fase-idx="${fIdx}"`)}>
+                ${this.formatMultiline(fase.recursos)}
+              </div>
+            </div>
+          </td>
+        </tr>
+      `
+      )
+      .join("");
+
+    const tablaProyectoNEMHTML = `
+      <!-- Ficha Descriptiva del Proyecto Sociocrítico NEM -->
+      <table class="nem-table">
+        <thead>
+          <tr>
+            <th colspan="4" class="nem-table-title">
+              FICHA METODOLÓGICA DEL PROYECTO NEM · ${(proy.metodologiaNombre || activeMetObj.nombre).toUpperCase()}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="nem-cell-label" style="width:18%;">Nombre del Proyecto:</td>
+            <td style="font-weight:800;color:#8b1d41;width:34%;" ${this.editAttr("proyecto_meta", "nombreProyecto")}>
+              ${proy.nombreProyecto || `Proyecto ${activeMetObj.etiquetaCorta}: ${bloque.contenidoContextualizado}`}
+            </td>
+            <td class="nem-cell-label" style="width:18%;">Metodología Sociocrítica:</td>
+            <td style="font-weight:700;">
+              ${proy.metodologiaNombre || activeMetObj.nombre}
+            </td>
+          </tr>
+          <tr>
+            <td class="nem-cell-label">Problemática o Situación Comunitaria:</td>
+            <td colspan="3" ${this.editAttr("proyecto_meta", "problematica")}>
+              ${proy.problematica || ""}
+            </td>
+          </tr>
+          <tr>
+            <td class="nem-cell-label">Propósito del Proyecto:</td>
+            <td ${this.editAttr("proyecto_meta", "proposito")}>
+              ${proy.proposito || ""}
+            </td>
+            <td class="nem-cell-label">Producto / Entregable Final:</td>
+            <td style="font-weight:700;" ${this.editAttr("proyecto_meta", "productoFinal")}>
+              ${proy.productoFinal || ""}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Tabla de Fases / Momentos Oficiales de la Metodología NEM -->
+      <table class="nem-table">
+        <thead>
+          <tr>
+            <th colspan="2" class="nem-table-title">
+              DESARROLLO DEL PROYECTO POR FASES / MOMENTOS OFICIALES · ${(proy.metodologiaNombre || activeMetObj.nombre).toUpperCase()} (${bloque.semanas.toUpperCase()})
+            </th>
+          </tr>
+          <tr style="background:#fae5d7;">
+            <th style="width:185px;text-align:center;">Fase / Momento Oficial y Tiempo</th>
+            <th style="text-align:center;">Actividades del Proyecto, Evidencias Parciales y Recursos</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filasFasesProyectoHTML}
+        </tbody>
+      </table>
+    `;
+
+    const listaEvalActiva =
+      isProjectMode && Array.isArray(proy.evaluacionFormativa) && proy.evaluacionFormativa.length > 0
+        ? proy.evaluacionFormativa
+        : plan.evaluacionFormativa || [];
+
+    const filasEvaluacion = listaEvalActiva
       .map((criterio, i) => {
         const letra = String.fromCharCode(97 + i);
         return `
@@ -2137,29 +2867,57 @@ window.AppController = {
       .join("");
 
     return `
-      <!-- PANEL CONTEXTUAL IA PARA EL PLAN DE CLASE -->
+      ${modeSwitcherHTML}
+
+      <!-- PANEL CONTEXTUAL IA PARA EL PLAN DE CLASE / PROYECTO NEM -->
       <div class="ai-action-box no-export">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
           <div>
             <div style="font-size:0.75rem;font-weight:800;color:#8b1d41;text-transform:uppercase;">
-              ETAPA 4 DE 5 · MOTOR IA CONECTADO AL PROGRAMA ANALÍTICO Y CODISEÑO
+              ${
+                isProjectMode
+                  ? `ETAPA 4 DE 5 · GENERADOR IA DE PROYECTO NEM (${activeMetObj.etiquetaCorta.toUpperCase()})`
+                  : `ETAPA 4 DE 5 · MOTOR IA DE SECUENCIA POR SESIONES (INICIO / DESARROLLO / CIERRE)`
+              }
             </div>
             <div style="font-size:0.86rem;color:#334155;margin-top:2px;">
-              Genera o actualiza este Plan de Clase tomando tus ediciones del <strong>Diagnóstico, Programa Analítico y Codiseño</strong>, o agrega una nueva sesión contextualizada.
+              ${
+                isProjectMode
+                  ? `Genera o actualiza las <strong>${fasesProyecto.length} Fases/Momentos oficiales</strong> del proyecto <strong>${activeMetObj.nombre}</strong> y sus Hojas de Actividad tomando el contexto del Programa Analítico y Codiseño.`
+                  : `Genera o actualiza este Plan de Clase por sesiones tomando tus ediciones del <strong>Diagnóstico, Programa Analítico y Codiseño</strong>, o agrega una nueva sesión contextualizada.`
+              }
             </div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button id="btnRegenPlanBloqueAI" class="btn btn-primary btn-sm" onclick="AppController.handleRegenerateBlockPlanAI()">
-              Generar / Actualizar Plan del Bloque ${bloque.id} con IA
+              ${
+                isProjectMode
+                  ? `Generar / Actualizar Proyecto ${activeMetObj.etiquetaCorta} con IA`
+                  : `Generar / Actualizar Plan del Bloque ${bloque.id} con IA`
+              }
             </button>
-            <button id="btnAddSessionAI" class="btn btn-outline btn-sm" onclick="AppController.handleAddSingleSessionWithAI()">
-              + Agregar Sesión #${sesiones.length + 1} con IA
-            </button>
+            ${
+              isProjectMode
+                ? `
+              <button class="btn btn-outline btn-sm" onclick="AppController.addManualProjectPhase()">
+                + Agregar Fase / Momento (#${fasesProyecto.length + 1})
+              </button>
+            `
+                : `
+              <button id="btnAddSessionAI" class="btn btn-outline btn-sm" onclick="AppController.handleAddSingleSessionWithAI()">
+                + Agregar Sesión #${sesiones.length + 1} con IA
+              </button>
+            `
+            }
           </div>
         </div>
         <div style="margin-top:8px;">
           <input id="planBloqueCustomPrompt" class="form-control" style="font-size:0.82rem;padding:6px 10px;"
-            placeholder="Instrucción opcional para la IA en este bloque (ej. Enfocarse en experimentos con materiales caseros, debate grupal, problemas pesqueros de Guaymas...)" />
+            placeholder="${
+              isProjectMode
+                ? "Instrucción opcional para el Proyecto NEM (ej. Enfocarse en feria científica escolar, cartel comunitario en Guaymas, prototipo con materiales reciclados...)"
+                : "Instrucción opcional para la IA en este bloque (ej. Enfocarse en experimentos con materiales caseros, debate grupal, problemas pesqueros de Guaymas...)"
+            }" />
         </div>
       </div>
 
@@ -2175,7 +2933,11 @@ window.AppController = {
             <thead>
               <tr>
                 <th colspan="6" class="nem-table-title">
-                  PLAN DE CLASE · ${(esc.asignatura || "MATEMÁTICAS").toUpperCase()} · ${(esc.grado || "3° DE SECUNDARIA").toUpperCase()}
+                  ${
+                    isProjectMode
+                      ? `PLANEACIÓN DIDÁCTICA POR PROYECTO NEM (${activeMetObj.etiquetaCorta.toUpperCase()}) · ${(esc.asignatura || "MATEMÁTICAS").toUpperCase()} · ${(esc.grado || "3° DE SECUNDARIA").toUpperCase()}`
+                      : `PLAN DE CLASE POR SESIONES · ${(esc.asignatura || "MATEMÁTICAS").toUpperCase()} · ${(esc.grado || "3° DE SECUNDARIA").toUpperCase()}`
+                  }
                 </th>
               </tr>
             </thead>
@@ -2222,7 +2984,11 @@ window.AppController = {
                 </td>
                 <td class="nem-cell-label" style="width:14%;vertical-align:middle;text-align:center;">Tiempo de realización:</td>
                 <td style="width:14%;vertical-align:middle;text-align:center;font-weight:700;" ${this.editAttr("plan", "tiempoRealizacion")}>
-                  ${plan.tiempoRealizacion || `${bloque.numSemanas} semana(s) / ${sesiones.length} sesiones`}
+                  ${
+                    isProjectMode
+                      ? `${bloque.numSemanas || 2} semana(s) (${fasesProyecto.length} Fases/Momentos)`
+                      : plan.tiempoRealizacion || `${bloque.numSemanas} semana(s) / ${sesiones.length} sesiones`
+                  }
                 </td>
               </tr>
               <tr>
@@ -2253,15 +3019,19 @@ window.AppController = {
             </tbody>
           </table>
 
-          <!-- Tabla 3: Secuencia Didáctica por Semana y Sesión -->
-          ${tablasSemanasHTML}
+          <!-- Tabla 3: Desarrollo por Proyecto NEM (Fases/Momentos) o por Sesiones de Clase -->
+          ${isProjectMode ? tablaProyectoNEMHTML : tablasSemanasHTML}
 
           ${
             this.state.editMode
               ? `
             <div class="no-export" style="margin-bottom:16px;text-align:right;">
               <button class="btn btn-outline btn-sm" onclick="AppController.addManualSession()">
-                + Agregar Nueva Sesión al Bloque (${sesiones.length + 1})
+                ${
+                  isProjectMode
+                    ? `+ Agregar Fase / Momento Adicional al Proyecto (${fasesProyecto.length + 1})`
+                    : `+ Agregar Nueva Sesión al Bloque (${sesiones.length + 1})`
+                }
               </button>
             </div>
           `
@@ -2312,15 +3082,64 @@ window.AppController = {
   async handleRegenerateBlockPlanAI() {
     this.flushAllEditableFields();
     const bloque = this.getCurrentBloque();
+    const plan = this.getCurrentPlan();
+    const isProjectMode = plan && plan.modalidad === "proyecto";
     const promptInput = document.getElementById("planBloqueCustomPrompt");
     const promptExtra = promptInput ? promptInput.value.trim() : "";
     const btn = document.getElementById("btnRegenPlanBloqueAI");
+
+    if (isProjectMode) {
+      const metId =
+        plan.metodologiaId ||
+        window.AIGenerator.getSuggestedMetodologiaId(
+          this.state.escuela.campoFormativo,
+          this.state.escuela.asignatura
+        );
+      const metObj =
+        window.AIGenerator.metodologiasNEM[metId] || window.AIGenerator.metodologiasNEM.steam;
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = `Diseñando Proyecto ${metObj.etiquetaCorta} con IA...`;
+      }
+      this.showToast(
+        `Generando Proyecto NEM (${metObj.nombre}) para ${bloque.semanas} con IA...`,
+        "warning"
+      );
+
+      try {
+        const nuevoProyecto = await window.AIGenerator.generateProyectoForBloque(
+          this.state.escuela,
+          this.state.diagnostico,
+          bloque,
+          metId,
+          promptExtra
+        );
+        plan.modalidad = "proyecto";
+        plan.metodologiaId = metId;
+        plan.proyecto = nuevoProyecto;
+        this.saveStateToStorage();
+        this.renderSidebar();
+        this.renderMainView();
+        this.showToast(
+          `¡Proyecto ${metObj.etiquetaCorta} (${nuevoProyecto.fases.length} Fases/Momentos y sus Hojas de Actividad) actualizado con IA!`,
+          "success"
+        );
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = `Generar / Actualizar Proyecto ${metObj.etiquetaCorta} con IA`;
+        }
+      }
+      return;
+    }
+
     if (btn) {
       btn.disabled = true;
       btn.textContent = `Generando Plan de ${bloque.id} con IA...`;
     }
     this.showToast(
-      `Generando Plan de Clase para ${bloque.semanas} (${this.state.escuela.asignatura}) tomando el contexto del Programa Analítico...`,
+      `Generando Plan de Clase por sesiones para ${bloque.semanas} (${this.state.escuela.asignatura}) tomando el contexto del Programa Analítico...`,
       "warning"
     );
 
@@ -2331,6 +3150,11 @@ window.AppController = {
         bloque,
         promptExtra
       );
+      nuevoPlan.modalidad = "sesiones";
+      if (plan && plan.proyecto) {
+        nuevoPlan.proyecto = plan.proyecto;
+        nuevoPlan.metodologiaId = plan.metodologiaId;
+      }
       this.state.planesDB[bloque.id] = nuevoPlan;
       this.renumberSessions(this.state.planesDB[bloque.id], bloque);
       this.saveStateToStorage();
@@ -2411,62 +3235,112 @@ window.AppController = {
   },
 
   // ============================================================================
-  // ETAPA 5: HOJAS DE ACTIVIDAD POR SESIÓN (SINCRONIZADAS CON EL PLAN DE CLASE)
+  // ETAPA 5: HOJAS DE ACTIVIDAD (POR SESIÓN DIARIA O POR FASE/MOMENTO DEL PROYECTO NEM)
   // ============================================================================
   renderHojasView(bloque, plan) {
     const esc = this.state.escuela;
-    const sesiones = plan.sesiones || [];
+    const isProjectMode = Boolean(
+      plan && plan.modalidad === "proyecto" && plan.proyecto && Array.isArray(plan.proyecto.fases)
+    );
+    const metObj = isProjectMode
+      ? window.AIGenerator.metodologiasNEM[plan.metodologiaId] || window.AIGenerator.metodologiasNEM.steam
+      : null;
+
+    const units = isProjectMode ? plan.proyecto.fases : plan.sesiones || [];
     const sel = this.state.selectedSessionIndex;
     const catalog = window.SVGDiagrams.catalog || [];
 
-    // Agrupar botones de sesión por semana (5 sesiones por grupo semanal)
-    const gruposSemanales = {};
-    sesiones.forEach((s, idx) => {
-      const groupIdx = Math.floor(idx / 5) + 1;
-      if (!gruposSemanales[groupIdx]) gruposSemanales[groupIdx] = [];
-      gruposSemanales[groupIdx].push({ s, idx });
-    });
+    let gruposBotonesHTML = "";
+    if (isProjectMode) {
+      gruposBotonesHTML = `
+        <div class="session-week-group">
+          <span class="session-week-label">${metObj.etiquetaCorta}:</span>
+          ${units
+            .map((f, idx) => {
+              const shortTag =
+                metObj.id === "abp"
+                  ? `Momento ${f.numero || idx + 1}`
+                  : metObj.id === "as"
+                  ? `Etapa ${f.numero || idx + 1}`
+                  : `Fase ${f.numero || idx + 1}`;
+              const safeTitle = (f.faseClave || shortTag).replace(/"/g, "&quot;");
+              return `
+                <button class="session-filter-btn ${sel === idx ? "active" : ""}"
+                  onclick="AppController.selectSession(${idx})"
+                  title="${safeTitle}">
+                  ${shortTag}
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+      `;
+    } else {
+      const gruposSemanales = {};
+      units.forEach((s, idx) => {
+        const groupIdx = Math.floor(idx / 5) + 1;
+        if (!gruposSemanales[groupIdx]) gruposSemanales[groupIdx] = [];
+        gruposSemanales[groupIdx].push({ s, idx });
+      });
 
-    const gruposBotonesHTML = Object.keys(gruposSemanales)
-      .map((gKey) => {
-        const items = gruposSemanales[gKey];
-        const semNum = items[0]?.s?.semana || gKey;
-        return `
-          <div class="session-week-group">
-            <span class="session-week-label">Sem. ${semNum}:</span>
-            ${items
-              .map(({ s, idx }) => {
-                const safeTitle = (s.titulo || `Sesión ${s.numero}`).replace(/"/g, "&quot;");
-                return `
-                  <button class="session-filter-btn ${sel === idx ? "active" : ""}"
-                    onclick="AppController.selectSession(${idx})"
-                    title="Sesión ${s.numero}: ${safeTitle}">
-                    S${s.numero}
-                  </button>
-                `;
-              })
-              .join("")}
-          </div>
-        `;
-      })
-      .join("");
+      gruposBotonesHTML = Object.keys(gruposSemanales)
+        .map((gKey) => {
+          const items = gruposSemanales[gKey];
+          const semNum = items[0]?.s?.semana || gKey;
+          return `
+            <div class="session-week-group">
+              <span class="session-week-label">Sem. ${semNum}:</span>
+              ${items
+                .map(({ s, idx }) => {
+                  const safeTitle = (s.titulo || `Sesión ${s.numero}`).replace(/"/g, "&quot;");
+                  return `
+                    <button class="session-filter-btn ${sel === idx ? "active" : ""}"
+                      onclick="AppController.selectSession(${idx})"
+                      title="Sesión ${s.numero}: ${safeTitle}">
+                      S${s.numero}
+                    </button>
+                  `;
+                })
+                .join("")}
+            </div>
+          `;
+        })
+        .join("");
+    }
 
-    const activeSesObj = typeof sel === "number" ? sesiones[sel] : null;
+    const activeUnitObj = typeof sel === "number" ? units[sel] : null;
+    const activeUnitLabel = activeUnitObj
+      ? isProjectMode
+        ? activeUnitObj.faseClave || `Fase ${activeUnitObj.numero}`
+        : `S${activeUnitObj.numero}: ${activeUnitObj.titulo || ""}`
+      : "";
 
     const syncBannerHTML = `
       <div class="ai-action-box no-export">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
           <div>
             <div style="font-size:0.75rem;font-weight:800;color:#8b1d41;text-transform:uppercase;">
-              ETAPA 5 DE 5 · HOJAS DE ACTIVIDAD CONECTADAS AL PLAN DE CLASE
+              ${
+                isProjectMode
+                  ? `ETAPA 5 DE 5 · HOJAS DE ACTIVIDAD POR FASE / MOMENTO DEL PROYECTO (${metObj.etiquetaCorta.toUpperCase()})`
+                  : `ETAPA 5 DE 5 · HOJAS DE ACTIVIDAD POR SESIÓN CONECTADAS AL PLAN DE CLASE`
+              }
             </div>
             <div style="font-size:0.85rem;color:#334155;margin-top:2px;">
-              ¿Modificaste actividades en el <strong>Plan de Clase</strong>? Sincroniza con IA para que las hojas de trabajo reflejen exactamente tus cambios.
+              ${
+                isProjectMode
+                  ? `Este bloque está organizado por <strong>Proyecto NEM (${metObj.nombre})</strong>. Cada Fase/Momento cuenta con su propia Hoja de Actividad.`
+                  : `¿Modificaste actividades en el <strong>Plan de Clase</strong>? Sincroniza con IA para que las hojas de trabajo reflejen exactamente tus cambios.`
+              }
             </div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button id="btnSyncHojasAI" class="btn btn-primary btn-sm" onclick="AppController.handleSyncHojasFromPlanAI()">
-              Sincronizar / Generar Hojas desde el Plan de Clase con IA
+              ${
+                isProjectMode
+                  ? `Sincronizar / Generar Hojas por Fase del Proyecto con IA`
+                  : `Sincronizar / Generar Hojas desde el Plan de Clase con IA`
+              }
             </button>
           </div>
         </div>
@@ -2477,48 +3351,57 @@ window.AppController = {
       <div class="session-selector-bar no-export">
         <div class="session-week-groups">
           <button class="session-filter-btn session-filter-btn-all ${sel === "all" ? "active" : ""}" onclick="AppController.selectSession('all')">
-            Todas (${sesiones.length} hojas)
+            ${isProjectMode ? `Todas (${units.length} Fases)` : `Todas (${units.length} hojas)`}
           </button>
           ${gruposBotonesHTML}
         </div>
         <div class="session-stepper-controls">
           ${
-            activeSesObj
-              ? `<span style="font-size:0.78rem;color:#475569;font-weight:600;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${(activeSesObj.titulo || "").replace(/"/g, "&quot;")}">
-                  S${activeSesObj.numero}: ${activeSesObj.titulo || ""}
+            activeUnitObj
+              ? `<span style="font-size:0.78rem;color:#475569;font-weight:600;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${activeUnitLabel.replace(/"/g, "&quot;")}">
+                  ${activeUnitLabel}
                 </span>`
-              : `<span style="font-size:0.78rem;color:#64748b;">Mostrando las ${sesiones.length} sesiones</span>`
+              : `<span style="font-size:0.78rem;color:#64748b;">Mostrando las ${units.length} ${isProjectMode ? "hojas de fase" : "sesiones"}</span>`
           }
-          <button class="btn btn-outline btn-sm" onclick="AppController.stepSession(-1)" title="Ver Hoja de Actividad Anterior">
+          <button class="btn btn-outline btn-sm" onclick="AppController.stepSession(-1)" title="Ver Hoja Anterior">
             ← Anterior
           </button>
-          <button class="btn btn-outline btn-sm" onclick="AppController.stepSession(1)" title="Ver Siguiente Hoja de Actividad">
+          <button class="btn btn-outline btn-sm" onclick="AppController.stepSession(1)" title="Ver Siguiente Hoja">
             Siguiente →
           </button>
         </div>
       </div>
     `;
 
-    const sesionesConIndice =
+    const unitsConIndice =
       sel === "all"
-        ? sesiones.map((ses, idx) => ({ ses, absIdx: idx }))
-        : [{ ses: sesiones[sel] || sesiones[0], absIdx: typeof sel === "number" ? sel : 0 }];
+        ? units.map((u, idx) => ({ ses: u, absIdx: idx }))
+        : [{ ses: units[sel] || units[0], absIdx: typeof sel === "number" ? sel : 0 }];
 
-    const tarjetasHojasHTML = sesionesConIndice
+    const tarjetasHojasHTML = unitsConIndice
+      .filter(({ ses }) => Boolean(ses))
       .map(({ ses, absIdx }) => {
         const h = ses.hojaActividad || {};
+        const unitDefaultTitle = isProjectMode ? ses.faseClave : ses.titulo;
+        const unitBadgeLabel = isProjectMode
+          ? `${metObj.etiquetaCorta.toUpperCase()} · FASE/MOMENTO ${ses.numero || absIdx + 1}`
+          : `SESIÓN ${ses.numero || absIdx + 1}`;
+        const unitDurationLabel = isProjectMode
+          ? ses.sesionesEstimadas || "Fase del Proyecto"
+          : "50 min";
+
         const diagramType =
           h.diagramType ||
           bloque.diagramType ||
           window.AIGenerator.getDefaultDiagramForSubject(esc.asignatura);
         const svgHTML = window.SVGDiagrams.renderByType(diagramType, {
-          title: h.tituloHoja || ses.titulo
+          title: h.tituloHoja || unitDefaultTitle
         });
 
         const diagramSelectorHTML = this.state.editMode
           ? `
           <div class="worksheet-diagram-toolbar no-export">
-            <span><strong>Esquema Visual / Organizador Gráfico de la Hoja #${ses.numero}:</strong></span>
+            <span><strong>Esquema Visual / Organizador Gráfico de la Hoja #${ses.numero || absIdx + 1}:</strong></span>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               <select class="form-control" style="width:auto;padding:4px 8px;font-size:0.78rem;"
                 onchange="AppController.changeWorksheetDiagram(${absIdx}, this.value)">
@@ -2530,8 +3413,12 @@ window.AppController = {
                   .join("")}
               </select>
               ${
-                sesiones.length > 1
-                  ? `<button class="btn btn-danger-outline btn-sm" onclick="AppController.deleteSession(${absIdx})">Eliminar Sesión #${ses.numero}</button>`
+                units.length > 1
+                  ? `<button class="btn btn-danger-outline btn-sm" onclick="AppController.deleteSession(${absIdx})">${
+                      isProjectMode
+                        ? `Eliminar Fase #${ses.numero || absIdx + 1}`
+                        : `Eliminar Sesión #${ses.numero || absIdx + 1}`
+                    }</button>`
                   : ""
               }
             </div>
@@ -2578,18 +3465,18 @@ window.AppController = {
           <div class="worksheet-card">
             <div class="nem-header-banner">
               <span>${esc.nombre.toUpperCase()} (${esc.cct})</span>
-              <span>${(esc.asignatura || "MATEMÁTICAS").toUpperCase()} · ${(esc.grado || "3°").toUpperCase()} · ${bloque.semanas.toUpperCase()} · SESIÓN ${ses.numero}</span>
+              <span>${(esc.asignatura || "MATEMÁTICAS").toUpperCase()} · ${(esc.grado || "3°").toUpperCase()} · ${bloque.semanas.toUpperCase()} · ${unitBadgeLabel}</span>
             </div>
 
             <table class="worksheet-student-header">
               <tbody>
                 <tr>
-                  <td style="width:52%;"><strong>Nombre del Alumno(a):</strong> _______________________________________</td>
+                  <td style="width:52%;"><strong>Nombre del Alumno(a) / Equipo:</strong> _________________________________</td>
                   <td style="width:20%;"><strong>Grupo:</strong> ______</td>
                   <td style="width:28%;"><strong>Fecha:</strong> ____/____/202___</td>
                 </tr>
                 <tr>
-                  <td colspan="2"><strong>Docente:</strong> ${esc.docente}</td>
+                  <td colspan="2"><strong>Docente:</strong> ${esc.docente}${isProjectMode ? ` · <strong>Proyecto:</strong> ${plan.proyecto.nombreProyecto || ""}` : ""}</td>
                   <td><strong>Calificación / Sello:</strong> _________</td>
                 </tr>
               </tbody>
@@ -2597,12 +3484,12 @@ window.AppController = {
 
             <div class="worksheet-title-banner">
               <div>
-                HOJA DE TRABAJO · SESIÓN ${ses.numero}:
+                ${isProjectMode ? `HOJA DE ACTIVIDAD DEL PROYECTO · FASE/MOMENTO ${ses.numero || absIdx + 1}:` : `HOJA DE TRABAJO · SESIÓN ${ses.numero || absIdx + 1}:`}
                 <span ${this.editAttr("hoja", "tituloHoja", `data-session-idx="${absIdx}"`)}>
-                  ${h.tituloHoja || ses.titulo}
+                  ${h.tituloHoja || unitDefaultTitle}
                 </span>
               </div>
-              <span style="font-size:0.78rem;opacity:0.92;white-space:nowrap;">50 min</span>
+              <span style="font-size:0.78rem;opacity:0.92;white-space:nowrap;">${unitDurationLabel}</span>
             </div>
 
             <div style="font-size:0.85rem;margin-bottom:8px;">
@@ -2616,7 +3503,7 @@ window.AppController = {
             </div>
 
             <div class="worksheet-theory-box">
-              <strong>Concepto / Recordatorio Clave:</strong>
+              <strong>${isProjectMode ? "Guía Metodológica de la Fase / Concepto Clave:" : "Concepto / Recordatorio Clave:"}</strong>
               <span ${this.editAttr("hoja", "notaTeorica", `data-session-idx="${absIdx}"`)}>
                 ${h.notaTeorica || ""}
               </span>
@@ -2639,7 +3526,7 @@ window.AppController = {
                 ? `
               <div class="no-export" style="margin:8px 0 12px 0;text-align:right;">
                 <button class="btn btn-outline btn-sm" onclick="AppController.addExercise(${absIdx})">
-                  + Agregar Actividad/Ejercicio a la Hoja #${ses.numero}
+                  + Agregar Actividad/Ejercicio a la Hoja #${ses.numero || absIdx + 1}
                 </button>
               </div>
             `
@@ -2647,14 +3534,18 @@ window.AppController = {
             }
 
             <div class="exit-ticket-box">
-              <div class="exit-ticket-title">Boleto de Salida (Evaluación Formativa de Cierre · 10 min)</div>
+              <div class="exit-ticket-title">${
+                isProjectMode
+                  ? `Boleto de Salida / Evaluación Formativa de la Fase ${ses.numero || absIdx + 1}`
+                  : `Boleto de Salida (Evaluación Formativa de Cierre · 10 min)`
+              }</div>
               <div style="font-size:0.86rem;font-weight:600;margin-bottom:6px;"
                 ${this.editAttr("hoja", "boletoSalida", `data-session-idx="${absIdx}"`)}>
-                ${h.boletoSalida || "Explica cuál fue la estrategia o idea principal que utilizaste en la sesión de hoy."}
+                ${h.boletoSalida || "Explica cuál fue la estrategia o idea principal que utilizaste hoy."}
               </div>
               <div style="border-bottom:1px dotted #64748b;height:20px;margin-bottom:5px;"></div>
               <div style="display:flex;justify-content:space-between;font-size:0.76rem;color:#475569;margin-top:4px;flex-wrap:wrap;gap:6px;">
-                <span>Mi nivel de comprensión hoy:</span>
+                <span>Mi nivel de avance hoy:</span>
                 <span>[ ] Lo dominé (Logrado)</span>
                 <span>[ ] Casi listo, tuve una duda (Medianamente)</span>
                 <span>[ ] Necesito apoyo extra</span>
@@ -2678,9 +3569,61 @@ window.AppController = {
     this.flushAllEditableFields();
     const bloque = this.getCurrentBloque();
     const plan = this.getCurrentPlan();
-    if (!plan || !Array.isArray(plan.sesiones)) return;
+    if (!plan) return;
 
+    const isProjectMode = Boolean(
+      plan.modalidad === "proyecto" && plan.proyecto && Array.isArray(plan.proyecto.fases)
+    );
     const btn = document.getElementById("btnSyncHojasAI");
+
+    if (isProjectMode) {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Sincronizando Hojas con las Fases del Proyecto...";
+      }
+      this.showToast(
+        "Sincronizando las Hojas de Actividad con las Fases/Momentos editados de tu Proyecto NEM...",
+        "warning"
+      );
+
+      try {
+        const targetFases =
+          this.state.selectedSessionIndex === "all"
+            ? plan.proyecto.fases
+            : [plan.proyecto.fases[this.state.selectedSessionIndex]];
+
+        const hojasFaseActualizadas = await window.AIGenerator.syncHojasFromProyecto(
+          this.state.escuela,
+          bloque,
+          plan.proyecto,
+          targetFases
+        );
+
+        hojasFaseActualizadas.forEach((item) => {
+          const faseMatch = plan.proyecto.fases.find(
+            (f) => Number(f.numero) === Number(item.numero)
+          );
+          if (faseMatch && item.hojaActividad) {
+            faseMatch.hojaActividad = item.hojaActividad;
+          }
+        });
+
+        this.saveStateToStorage();
+        this.renderMainView();
+        this.showToast(
+          "¡Hojas de Actividad sincronizadas con cada Fase/Momento del Proyecto NEM!",
+          "success"
+        );
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Sincronizar / Generar Hojas por Fase del Proyecto con IA";
+        }
+      }
+      return;
+    }
+
+    if (!Array.isArray(plan.sesiones)) return;
     if (btn) {
       btn.disabled = true;
       btn.textContent = "Sincronizando Hojas con el Plan de Clase...";

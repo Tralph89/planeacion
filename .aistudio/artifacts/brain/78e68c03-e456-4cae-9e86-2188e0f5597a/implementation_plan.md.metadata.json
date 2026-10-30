@@ -1,6 +1,6 @@
 {
-  "summary":  "Plan actualizado: La Etapa 1 inicia con el registro o selección de los Datos de Identificación (Escuela, Clave CCT, Nombre del Docente, Materia, Grado, Grupos, Turno, Localidad y Ciclo Escolar), seguido de la carga del Programa Sintético (PDF o Catálogo NEM), Programa Analítico, Codiseño, Planes de Clase y Hojas de Actividad.",
-  "updatedAt":  "2026-10-30T13:57:04.227403624Z",
+  "summary":  "Plan de implementación para agregar en la Etapa 4 (Planes de Clase) el selector de modalidad por bloque entre Secuencia por Sesiones de Clase (Inicio / Desarrollo / Cierre) y Planeación por Proyectos de la NEM (las 4 metodologías sociocríticas oficiales estructuradas por sus Fases/Momentos), adaptando automáticamente la Etapa 5 (Hojas de Actividad) para generar una hoja de actividad por cada Fase o Momento del proyecto.",
+  "updatedAt":  "2026-10-30T15:38:53.810984467Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

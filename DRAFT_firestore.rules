@@ -1,0 +1,132 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Global Helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Validation Blueprint for CourseDocument (synced with firebase-blueprint.json)
+    function isValidCourseDocument(data) {
+      return data.keys().hasAll([
+          'courseId',
+          'ownerId',
+          'nombreCurso',
+          'pdfFileName',
+          'asignatura',
+          'grado',
+          'escuelaNombre',
+          'cct',
+          'docente',
+          'courseData',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'courseId',
+          'ownerId',
+          'nombreCurso',
+          'pdfFileName',
+          'asignatura',
+          'grado',
+          'escuelaNombre',
+          'cct',
+          'docente',
+          'courseData',
+          'updatedAt'
+        ])
+        && data.courseId is string
+        && data.courseId.size() >= 1
+        && data.courseId.size() <= 128
+        && data.courseId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.nombreCurso is string
+        && data.nombreCurso.size() >= 1
+        && data.nombreCurso.size() <= 240
+        && data.pdfFileName is string
+        && data.pdfFileName.size() <= 240
+        && data.asignatura is string
+        && data.asignatura.size() >= 1
+        && data.asignatura.size() <= 160
+        && data.grado is string
+        && data.grado.size() >= 1
+        && data.grado.size() <= 120
+        && data.escuelaNombre is string
+        && data.escuelaNombre.size() >= 1
+        && data.escuelaNombre.size() <= 200
+        && data.cct is string
+        && data.cct.size() >= 1
+        && data.cct.size() <= 40
+        && data.docente is string
+        && data.docente.size() >= 1
+        && data.docente.size() <= 160
+        && data.courseData is map
+        && data.courseData.size() <= 20
+        && data.updatedAt is timestamp;
+    }
+
+    // Collection: /courses/{courseId}
+    match /courses/{courseId} {
+      allow get: if isSignedIn()
+        && isValidId(courseId)
+        && existing().ownerId == request.auth.uid;
+
+      allow list: if isSignedIn()
+        && existing().ownerId == request.auth.uid;
+
+      allow create: if isVerifiedUser()
+        && isValidId(courseId)
+        && isValidCourseDocument(incoming())
+        && incoming().courseId == courseId
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(courseId)
+        && isValidCourseDocument(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().courseId == existing().courseId
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'nombreCurso',
+          'pdfFileName',
+          'asignatura',
+          'grado',
+          'escuelaNombre',
+          'cct',
+          'docente',
+          'courseData',
+          'updatedAt'
+        ]);
+
+      allow delete: if isVerifiedUser()
+        && isValidId(courseId)
+        && existing().ownerId == request.auth.uid;
+    }
+  }
+}

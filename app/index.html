@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <!-- BARRA SUPERIOR INSTITUCIONAL CON SELECTOR DE CURSO Y FLUJO EN 5 ETAPAS -->
+  <!-- BARRA SUPERIOR INSTITUCIONAL CON SELECTOR DE CURSO, BORRAR MATERIA Y BASE DE DATOS -->
   <header class="app-topbar">
     <div class="topbar-brand-cluster">
       <div class="brand-wordmark" id="topbarWordmark">
@@ -33,6 +33,14 @@
           title="Crear planeación para una nueva materia o grado"
         >
           + Nueva Materia
+        </button>
+        <button
+          type="button"
+          class="btn-delete-course"
+          onclick="AppController.deleteActiveCourse()"
+          title="Borrar la materia o curso seleccionado actualmente"
+        >
+          Borrar Materia
         </button>
       </div>
     </div>
@@ -55,7 +63,16 @@
       </button>
     </nav>
 
-    <div class="topbar-action">
+    <div class="topbar-action" style="gap:8px;">
+      <button
+        type="button"
+        id="cloudAuthButton"
+        class="btn-new-course"
+        onclick="AppController.handleCloudAuthAction()"
+        title="Inicia sesión con tu cuenta de Google para acceder a tus planeaciones desde cualquier computadora"
+      >
+        Iniciar sesión (Guardar en mi cuenta)
+      </button>
       <button class="btn-topbar-primary js-pdf-export-btn" onclick="AppController.exportPDFSafely()">
         Descargar PDF
       </button>
@@ -117,15 +134,6 @@
     onchange="AppController.handleSinteticoPdfUpload(event)"
   />
 
-  <!-- INPUT OCULTO PARA IMPORTAR RESPALDO JSON -->
-  <input
-    type="file"
-    id="backupJsonInput"
-    accept=".json,application/json"
-    style="display:none;"
-    onchange="AppController.handleImportBackupFile(event)"
-  />
-
   <!-- CONTENEDOR DE NOTIFICACIONES TOAST -->
   <div id="toastContainer" class="toast-container no-export" aria-live="polite"></div>
 
@@ -141,7 +149,7 @@
     </div>
   </div>
 
-  <!-- MÓDULOS DE DATOS Y LÓGICA -->
+  <!-- MÓDULOS DE DATOS, BASE DE DATOS Y LÓGICA -->
   <script src="/node_modules/html2canvas/dist/html2canvas.min.js"></script>
   <script src="/node_modules/jspdf/dist/jspdf.umd.min.js"></script>
   <script src="js/svg_diagrams.js"></script>
@@ -153,5 +161,6 @@
   <script src="js/export_docx.js"></script>
   <script src="js/ai_generator.js"></script>
   <script src="js/app.js"></script>
+  <script type="module" src="js/firebase_db.js"></script>
 </body>
 </html>

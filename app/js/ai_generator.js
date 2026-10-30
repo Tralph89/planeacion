@@ -410,5 +410,305 @@ window.AIGenerator = {
       throw new Error(data.error || `Error del servidor (${response.status})`);
     }
     return data.session;
+  },
+
+  // ==========================================================================
+  // CATÁLOGO OFICIAL DE LAS 4 METODOLOGÍAS SOCIOCRÍTICAS DE PROYECTOS (NEM)
+  // ==========================================================================
+  metodologiasNEM: {
+    steam: {
+      id: "steam",
+      nombre: "Aprendizaje Basado en Indagación (STEAM como enfoque)",
+      etiquetaCorta: "Indagación STEAM",
+      campoSugerido: "Saberes y Pensamiento Científico",
+      fasesOficiales: [
+        {
+          numero: 1,
+          faseClave: "Fase 1 · Introducción al tema e identificación de la problemática",
+          descripcion: "Uso de conocimientos previos sobre el tema a desarrollar e identificación de la problemática comunitaria o escolar."
+        },
+        {
+          numero: 2,
+          faseClave: "Fase 2 · Diseño de investigación y desarrollo de la indagación",
+          descripcion: "Acuerdos sobre qué se va a hacer ante cada pregunta de indagación, exploración, experimentación o modelación."
+        },
+        {
+          numero: 3,
+          faseClave: "Fase 3 · Organizar y estructurar las respuestas a las preguntas de indagación",
+          descripcion: "Análisis, organización, interpretación de datos, síntesis de ideas y clarificación de conceptos y explicaciones."
+        },
+        {
+          numero: 4,
+          faseClave: "Fase 4 · Presentación de los resultados de indagación y aplicación",
+          descripcion: "Presentación de los resultados obtenidos y elaboración de propuestas de acción para resolver la problemática identificada."
+        },
+        {
+          numero: 5,
+          faseClave: "Fase 5 · Metacognición",
+          descripcion: "Reflexión sobre todo lo realizado: los planes de trabajo, las actuaciones personales o grupales, los procedimientos e instrumentos y los logros."
+        }
+      ]
+    },
+    abpc: {
+      id: "abpc",
+      nombre: "Aprendizaje Basado en Proyectos Comunitarios (ABPC)",
+      etiquetaCorta: "Proyectos Comunitarios (ABPC)",
+      campoSugerido: "Lenguajes",
+      fasesOficiales: [
+        {
+          numero: 1,
+          faseClave: "Fase 1 · Planeación (Momentos 1 a 3: Identificación, Recuperación y Planificación)",
+          descripcion: "Proponer planteamientos genuinos para introducir el diálogo, vincular conocimientos previos y negociar los pasos, producciones y tiempos del proyecto."
+        },
+        {
+          numero: 2,
+          faseClave: "Fase 2 · Acción (Momentos 4 a 7: Acercamiento, Comprensión y producción, Reconocimiento y Concreción)",
+          descripcion: "Exploración del problema, experimentación y revisión de producciones, identificación de avances y desarrollo de la primera versión del producto."
+        },
+        {
+          numero: 3,
+          faseClave: "Fase 3 · Intervención (Momentos 8 a 11: Integración, Difusión, Consideraciones y Avances)",
+          descripcion: "Exposición, explicación y difusión de las producciones a la comunidad, recepción de retroalimentación y toma de decisiones para futuros proyectos."
+        }
+      ]
+    },
+    abp: {
+      id: "abp",
+      nombre: "Aprendizaje Basado en Problemas (ABP)",
+      etiquetaCorta: "Basado en Problemas (ABP)",
+      campoSugerido: "Ética, Naturaleza y Sociedades",
+      fasesOficiales: [
+        {
+          numero: 1,
+          faseClave: "Momento 1 · Presentemos",
+          descripcion: "Planteamiento de la reflexión inicial situada en una imagen, lectura breve o caso real del contexto escolar y comunitario."
+        },
+        {
+          numero: 2,
+          faseClave: "Momento 2 · Recolectemos",
+          descripcion: "Exploración y recuperación de manera general de los saberes sociales y escolares previos respecto a la temática detectada."
+        },
+        {
+          numero: 3,
+          faseClave: "Momento 3 · Formulemos el problema",
+          descripcion: "Determinación con claridad del problema sobre el cual se trabajará, así como las inquietudes y curiosidades de los alumnos."
+        },
+        {
+          numero: 4,
+          faseClave: "Momento 4 · Organicemos la experiencia",
+          descripcion: "Planteamiento de una ruta de trabajo para el proceso de indagación contemplando objetivos, acuerdos, medios y recursos."
+        },
+        {
+          numero: 5,
+          faseClave: "Momento 5 · Vivamos la experiencia",
+          descripcion: "Guiar a los alumnos a una indagación específica de corte documental o vivencial que los lleve a comprender e intervenir en el problema."
+        },
+        {
+          numero: 6,
+          faseClave: "Momento 6 · Resultados y análisis",
+          descripcion: "Visualización de los avances o el fin del proyecto, divulgación de resultados e identificación de nuevos aprendizajes."
+        }
+      ]
+    },
+    as: {
+      id: "as",
+      nombre: "Aprendizaje Servicio (AS)",
+      etiquetaCorta: "Aprendizaje Servicio (AS)",
+      campoSugerido: "De lo Humano y lo Comunitario",
+      fasesOficiales: [
+        {
+          numero: 1,
+          faseClave: "Etapa 1 · Punto de partida",
+          descripcion: "Nacimiento del proyecto desde el interés de los alumnos o una necesidad concreta de la comunidad escolar y familiar."
+        },
+        {
+          numero: 2,
+          faseClave: "Etapa 2 · Lo que sé y lo que quiero saber",
+          descripcion: "Actividades para recabar información, identificar recursos y realizar un diagnóstico participativo de la realidad comunitaria."
+        },
+        {
+          numero: 3,
+          faseClave: "Etapa 3 · Organicemos las actividades",
+          descripcion: "Articulación de la intencionalidad pedagógica con la intencionalidad del servicio: qué, por qué, cómo, cuándo y quiénes."
+        },
+        {
+          numero: 4,
+          faseClave: "Etapa 4 · Creatividad en marcha",
+          descripcion: "Puesta en práctica de lo planificado, monitoreo de actividades, espacios y tiempos e interacción solidaria con la comunidad."
+        },
+        {
+          numero: 5,
+          faseClave: "Etapa 5 · Compartimos y evaluamos lo aprendido",
+          descripcion: "Evaluación final de los resultados académicos y del cumplimiento del servicio a la comunidad, así como autoevaluación."
+        }
+      ]
+    }
+  },
+
+  getSuggestedMetodologiaId(campoFormativo = "", asignatura = "") {
+    const c = String(campoFormativo).toLowerCase();
+    const a = String(asignatura).toLowerCase();
+    if (c.includes("lenguaje") || a.includes("español") || a.includes("inglés") || a.includes("ingles") || a.includes("artes")) {
+      return "abpc";
+    }
+    if (c.includes("ética") || c.includes("etica") || a.includes("historia") || a.includes("geograf") || a.includes("cívica") || a.includes("civica")) {
+      return "abp";
+    }
+    if (c.includes("humano") || a.includes("tecnolog") || a.includes("física") && a.includes("educación") || a.includes("tutor")) {
+      return "as";
+    }
+    return "steam";
+  },
+
+  // --------------------------------------------------------------------------
+  // ETAPA 4 (MODALIDAD PROYECTO NEM): Generar Proyecto por Fases / Momentos
+  // --------------------------------------------------------------------------
+  async generateProyectoForBloque(escuela, diagnostico, bloque, metodologiaId, promptExtra = "") {
+    const metId = metodologiaId || this.getSuggestedMetodologiaId(escuela?.campoFormativo, escuela?.asignatura);
+    const metObj = this.metodologiasNEM[metId] || this.metodologiasNEM.steam;
+
+    try {
+      const response = await fetch("/api/generate-proyecto-bloque", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          escuela,
+          diagnostico,
+          bloque,
+          metodologia: metObj,
+          promptExtra
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.proyecto && Array.isArray(data.proyecto.fases) && data.proyecto.fases.length > 0) {
+        return {
+          metodologiaId: metObj.id,
+          metodologiaNombre: metObj.nombre,
+          nombreProyecto: data.proyecto.nombreProyecto,
+          problematica: data.proyecto.problematica,
+          proposito: data.proyecto.proposito,
+          productoFinal: data.proyecto.productoFinal,
+          evaluacionFormativa: data.proyecto.evaluacionFormativa || [],
+          fases: data.proyecto.fases.map((f, idx) => ({
+            numero: idx + 1,
+            faseClave: f.faseClave || metObj.fasesOficiales[idx]?.faseClave || `Fase ${idx + 1}`,
+            sesionesEstimadas: f.sesionesEstimadas || "2 sesiones (100 min)",
+            actividades: f.actividades || "",
+            evidencia: f.evidencia || "",
+            recursos: f.recursos || "Cuaderno, pizarrón y hojas de trabajo de la fase",
+            hojaActividad: f.hojaActividad || this.buildDefaultPhaseWorksheet(escuela, bloque, metObj, f, idx + 1)
+          }))
+        };
+      }
+      throw new Error(data.error || "Fallback local proyecto");
+    } catch (e) {
+      return this.generateLocalProyectoForBloque(escuela, bloque, metObj.id, promptExtra);
+    }
+  },
+
+  buildDefaultPhaseWorksheet(escuela, bloque, metObj, faseInfo, numeroFase) {
+    const diag = bloque.diagramType || this.getDefaultDiagramForSubject(escuela?.asignatura);
+    const faseTitulo = faseInfo.faseClave || `Fase ${numeroFase}`;
+    return {
+      tituloHoja: `${faseTitulo} · ${bloque.contenidoContextualizado}`,
+      instrucciones: `Desarrolla en equipo e individualmente las actividades correspondientes a "${faseTitulo}" dentro de la metodología ${metObj.etiquetaCorta} para ${escuela.asignatura} (${escuela.grado}).`,
+      notaTeorica: `Metodología NEM: ${metObj.nombre} | Contenido: ${bloque.contenidoSintetico} | PDA: ${bloque.pda}`,
+      diagramType: diag,
+      ejercicios: [
+        {
+          enunciado: `1. Indagación y Análisis de la Fase (${faseTitulo}): Con base en el propósito de esta fase (${faseInfo.descripcion || ""}), registra los datos, ideas clave o planteamientos de nuestro proyecto en ${escuela.municipio || "la comunidad"}.`,
+          respuesta: `Registro claro y fundamentado de los hallazgos iniciales correspondientes a "${faseTitulo}" vinculados al contenido "${bloque.contenidoSintetico}".`
+        },
+        {
+          enunciado: `2. Desarrollo Práctico del PDA en el Proyecto: Realiza el procedimiento, análisis o construcción correspondiente a "${bloque.pda}" para avanzar hacia el entregable parcial de esta fase.`,
+          respuesta: `Desarrollo completo y justificado aplicando los conceptos de ${escuela.asignatura} al proyecto.`
+        },
+        {
+          enunciado: `3. Construcción de Evidencia de la Fase: Elabora o sintetiza aquí el avance parcial de tu equipo para integrarlo al producto final del proyecto escolar.`,
+          respuesta: `Evidencia parcial coherente con los criterios de evaluación formativa y los ejes articuladores (${bloque.ejesArticuladores}).`
+        }
+      ],
+      boletoSalida: `Autoevaluación de la Fase ${numeroFase}: ¿Qué aporté hoy a mi equipo en "${faseTitulo}" y qué necesitamos para la siguiente fase del proyecto?`
+    };
+  },
+
+  generateLocalProyectoForBloque(escuela, bloque, metodologiaId, promptExtra = "") {
+    const metId = metodologiaId || this.getSuggestedMetodologiaId(escuela?.campoFormativo, escuela?.asignatura);
+    const metObj = this.metodologiasNEM[metId] || this.metodologiasNEM.steam;
+    const totalSesiones = Math.max(3, Number(bloque.numSesiones) || 5);
+    const numFases = metObj.fasesOficiales.length;
+    const sesPorFase = Math.max(1, Math.round(totalSesiones / numFases));
+
+    const fases = metObj.fasesOficiales.map((f, idx) => {
+      const sesCount = idx === numFases - 1 ? Math.max(1, totalSesiones - sesPorFase * (numFases - 1)) : sesPorFase;
+      return {
+        numero: idx + 1,
+        faseClave: f.faseClave,
+        sesionesEstimadas: `${sesCount} sesión(es) (${sesCount * 50} min)`,
+        actividades: `• Propósito de la fase: ${f.descripcion}\n• Intervención Docente: Guiaré a los grupos ${escuela.grupos || "escolares"} en la contextualización de "${bloque.contenidoContextualizado}" dentro de ${escuela.municipio || "nuestra comunidad"}.${promptExtra ? `\n• Énfasis especial: ${promptExtra}.` : ""}\n• Actividades del Alumnado: En equipos colaborativos, los estudiantes desarrollarán la indagación, análisis y resolución del PDA ("${bloque.pda}") empleando la Hoja de Actividad de la Fase ${idx + 1}.`,
+        evidencia: `Avance parcial #${idx + 1} del proyecto y Hoja de Actividad de "${f.faseClave}" resuelta.`,
+        recursos: `Pizarrón, cuaderno de ${escuela.asignatura}, materiales del entorno y Hoja de Trabajo de la Fase ${idx + 1}.`,
+        hojaActividad: this.buildDefaultPhaseWorksheet(escuela, bloque, metObj, f, idx + 1)
+      };
+    });
+
+    return {
+      metodologiaId: metObj.id,
+      metodologiaNombre: metObj.nombre,
+      nombreProyecto: `Proyecto ${metObj.etiquetaCorta}: ${bloque.contenidoContextualizado}`,
+      problematica: `En el entorno de ${escuela.nombre} (${escuela.municipio || "la comunidad"}), se requiere analizar y proponer soluciones desde ${escuela.asignatura} (${escuela.grado}) ante situaciones reales vinculadas con "${bloque.contenidoSintetico}".`,
+      proposito: `Que las y los estudiantes de ${escuela.grado} desarrollen el PDA "${bloque.pda}" mediante las fases de la metodología ${metObj.nombre}, articulando los ejes de ${bloque.ejesArticuladores}.`,
+      productoFinal: `Exposición y entrega del proyecto aplicado sobre "${bloque.contenidoContextualizado}" acompañado del portafolio con las ${numFases} Hojas de Actividad por fase.`,
+      evaluacionFormativa: [
+        `Participa activamente en cada una de las ${numFases} fases/momentos de la metodología ${metObj.etiquetaCorta}.`,
+        `Demuestra el logro del PDA (${bloque.pda}) en las evidencias parciales y el producto final del proyecto.`,
+        `Vincula los saberes de ${escuela.asignatura} con la problemática comunitaria de ${escuela.municipio || "su localidad"}.`
+      ],
+      fases
+    };
+  },
+
+  // --------------------------------------------------------------------------
+  // ETAPA 5 (MODALIDAD PROYECTO NEM): Sincronizar Hojas por Fase/Momento
+  // --------------------------------------------------------------------------
+  async syncHojasFromProyecto(escuela, bloque, proyecto, fasesTarget, promptExtra = "") {
+    try {
+      const response = await fetch("/api/sync-hojas-from-proyecto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ escuela, bloque, proyecto, fasesTarget, promptExtra })
+      });
+      const data = await response.json();
+      if (response.ok && Array.isArray(data.hojasPorFase) && data.hojasPorFase.length > 0) {
+        return data.hojasPorFase;
+      }
+      throw new Error(data.error || "Fallback local sync proyecto");
+    } catch (e) {
+      const diag = bloque.diagramType || this.getDefaultDiagramForSubject(escuela?.asignatura);
+      return (fasesTarget || []).map((f) => ({
+        numero: f.numero,
+        hojaActividad: {
+          tituloHoja: `Hoja del Proyecto · ${f.faseClave}`,
+          instrucciones: `Con base en las actividades del proyecto "${proyecto.nombreProyecto}" en "${f.faseClave}", realiza cada actividad para construir la evidencia: ${f.evidencia || "avance de la fase"}.`,
+          notaTeorica: `Síntesis de la Fase: ${(f.actividades || bloque.pda).slice(0, 220)}`,
+          diagramType: f.hojaActividad?.diagramType || diag,
+          ejercicios: [
+            {
+              enunciado: `1. Planteamiento e Indagación (${f.faseClave}): Retomando la problemática del proyecto ("${(proyecto.problematica || "").slice(0, 140)}"), desarrolla el análisis inicial de esta fase.`,
+              respuesta: `Análisis pertinente y alineado con "${f.faseClave}" del proyecto.`
+            },
+            {
+              enunciado: `2. Actividad Central de la Fase: Desarrolla paso a paso las actividades acordadas (${(f.actividades || "").slice(0, 160)}...) aplicando el PDA "${bloque.pda}".`,
+              respuesta: `Procedimiento y desarrollo acordes a las actividades de la fase.`
+            },
+            {
+              enunciado: `3. Construcción de la Evidencia Parcial (${f.evidencia || "Entregable de la fase"}): Registra aquí la conclusión o propuesta que se integrará al producto final (${proyecto.productoFinal || ""}).`,
+              respuesta: `Evidencia parcial completa y fundamentada.`
+            }
+          ],
+          boletoSalida: `Reflexión de "${f.faseClave}": ¿Qué logramos resolver hoy para avanzar hacia nuestro producto final (${proyecto.productoFinal || "Proyecto NEM"})?`
+        }
+      }));
+    }
   }
 };

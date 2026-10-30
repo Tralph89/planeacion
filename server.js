@@ -55,13 +55,13 @@ app.post("/api/parse-sintetico-pdf", async (req, res) => {
 
     const promptText = `
 Analiza el documento PDF adjunto del Programa Sintético de la Nueva Escuela Mexicana (NEM).
-Extrae los Contenidos y Procesos de Desarrollo de Aprendizaje (PDA) que corresponden específicamente a:
+Extrae TODOS los Contenidos y Procesos de Desarrollo de Aprendizaje (PDA) oficiales completos que corresponden específicamente a:
 - Fase: ${fase}
 - Grado: ${grado}
 - Campo Formativo: ${campo}
 - Materia / Disciplina: ${materia}
 
-Si el PDF contiene varias disciplinas o grados, filtra los que correspondan a "${materia}" de "${grado}". Si el PDF es un documento curricular general, extrae o adapta entre 6 y 12 Contenidos y PDAs oficiales clave para ${materia} (${grado}).
+Si el PDF contiene varias disciplinas o grados, filtra únicamente los que correspondan a "${materia}" de "${grado}", asegurándote de incluir la totalidad de los Contenidos oficiales del programa de esa disciplina (por ejemplo, los 14 contenidos completos en Geografía, Español, Formación Cívica y Ética, Inglés o Artes, o todos los contenidos oficiales de Biología, Física, Química, Historia, Tecnología o Educación Física) distribuidos en los 3 trimestres.
 `.trim();
 
     const response = await ai.models.generateContent({
@@ -645,6 +645,251 @@ Datos curriculares:
     console.error("[Gemini API Error]:", error);
     return res.status(500).json({
       error: error?.message || "No fue posible generar la sesión con IA en el servidor."
+    });
+  }
+});
+
+// ============================================================================
+// ETAPA 4 (MODALIDAD PROYECTO NEM): GENERAR PROYECTO POR FASES / MOMENTOS OFICIALES
+// ============================================================================
+app.post("/api/generate-proyecto-bloque", async (req, res) => {
+  try {
+    const ai = getAIClient();
+    if (!ai) {
+      return res.status(503).json({ error: "GEMINI_API_KEY no disponible." });
+    }
+
+    const {
+      escuela = {},
+      diagnostico = {},
+      bloque = {},
+      metodologia = {},
+      promptExtra = ""
+    } = req.body || {};
+
+    const fasesBase = Array.isArray(metodologia.fasesOficiales)
+      ? metodologia.fasesOficiales
+      : [];
+
+    const prompt = `
+Eres el docente "${escuela.docente}" de la escuela "${escuela.nombre}" (CCT: ${escuela.cct}) ubicada en ${escuela.municipio || "México"}.
+Impartes la materia de "${escuela.asignatura}" en ${escuela.grado} (${escuela.fase}), Campo Formativo "${escuela.campoFormativo}", grupos ${escuela.grupos} (${escuela.turno}).
+
+Diseña un PROYECTO DIDÁCTICO COMPLETO DE LA NUEVA ESCUELA MEXICANA (NEM) para este bloque utilizando la metodología sociocrítica oficial:
+- Metodología elegida: ${metodologia.nombre || "Aprendizaje Basado en Indagación (STEAM como enfoque)"}
+- Fases / Momentos oficiales que DEBES respetar en orden exacto (${fasesBase.length} fases):
+${fasesBase.map((f, idx) => `  ${idx + 1}. ${f.faseClave}: ${f.descripcion}`).join("\n")}
+
+Contexto del Diagnóstico Socioeducativo:
+${diagnostico.comunidad || ""}
+
+Datos del Bloque (Programa Analítico / Codiseño):
+- ID: ${bloque.id} (${bloque.semanas}, ${bloque.numSesiones || 5} sesiones en total)
+- Contenido Sintético: ${bloque.contenidoSintetico}
+- Contenido Contextualizado: ${bloque.contenidoContextualizado}
+- PDA: ${bloque.pda}
+- Ejes Articuladores: ${bloque.ejesArticuladores || ""}
+- Diagrama sugerido: ${bloque.diagramType || "concept_map"}
+- Instrucción adicional del docente: ${promptExtra || "Desarrollar cada fase/momento con actividades claras para el docente y los alumnos, y generar una Hoja de Actividad completa por cada Fase/Momento del proyecto."}
+`.trim();
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: {
+        systemInstruction:
+          "Diseña el proyecto sociocrítico oficial de la NEM en español, respetando estrictamente las Fases o Momentos oficiales de la metodología indicada. Cada Fase/Momento debe incluir su propia hojaActividad con 3 ejercicios/actividades prácticas, guía de respuestas para el docente y boleto de salida/reflexión de la fase.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            nombreProyecto: { type: Type.STRING },
+            problematica: { type: Type.STRING },
+            proposito: { type: Type.STRING },
+            productoFinal: { type: Type.STRING },
+            evaluacionFormativa: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            },
+            fases: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  numero: { type: Type.INTEGER },
+                  faseClave: { type: Type.STRING },
+                  sesionesEstimadas: { type: Type.STRING },
+                  actividades: { type: Type.STRING },
+                  evidencia: { type: Type.STRING },
+                  recursos: { type: Type.STRING },
+                  hojaActividad: {
+                    type: Type.OBJECT,
+                    properties: {
+                      tituloHoja: { type: Type.STRING },
+                      instrucciones: { type: Type.STRING },
+                      notaTeorica: { type: Type.STRING },
+                      diagramType: { type: Type.STRING },
+                      ejercicios: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            enunciado: { type: Type.STRING },
+                            respuesta: { type: Type.STRING }
+                          },
+                          required: ["enunciado", "respuesta"]
+                        }
+                      },
+                      boletoSalida: { type: Type.STRING }
+                    },
+                    required: [
+                      "tituloHoja",
+                      "instrucciones",
+                      "notaTeorica",
+                      "diagramType",
+                      "ejercicios",
+                      "boletoSalida"
+                    ]
+                  }
+                },
+                required: [
+                  "numero",
+                  "faseClave",
+                  "sesionesEstimadas",
+                  "actividades",
+                  "evidencia",
+                  "recursos",
+                  "hojaActividad"
+                ]
+              }
+            }
+          },
+          required: [
+            "nombreProyecto",
+            "problematica",
+            "proposito",
+            "productoFinal",
+            "evaluacionFormativa",
+            "fases"
+          ]
+        }
+      }
+    });
+
+    const parsed = JSON.parse((response.text ?? "{}").trim());
+    return res.json({ proyecto: parsed });
+  } catch (error) {
+    console.error("[generate-proyecto-bloque Error]:", error);
+    return res.status(500).json({
+      error: error?.message || "Error al generar el Proyecto NEM con IA."
+    });
+  }
+});
+
+// ============================================================================
+// ETAPA 5 (MODALIDAD PROYECTO NEM): SINCRONIZAR HOJAS POR CADA FASE/MOMENTO DEL PROYECTO
+// ============================================================================
+app.post("/api/sync-hojas-from-proyecto", async (req, res) => {
+  try {
+    const ai = getAIClient();
+    if (!ai) {
+      return res.status(503).json({ error: "GEMINI_API_KEY no disponible." });
+    }
+
+    const {
+      escuela = {},
+      bloque = {},
+      proyecto = {},
+      fasesTarget = [],
+      promptExtra = ""
+    } = req.body || {};
+
+    const resumenFases = fasesTarget.map((f) => ({
+      numero: f.numero,
+      faseClave: f.faseClave,
+      sesionesEstimadas: f.sesionesEstimadas,
+      actividades: f.actividades,
+      evidencia: f.evidencia,
+      diagramType: f.hojaActividad?.diagramType || bloque.diagramType || "concept_map"
+    }));
+
+    const prompt = `
+El docente "${escuela.docente}" (${escuela.nombre}, ${escuela.municipio || "México"}) ha diseñado y editado el siguiente Proyecto NEM en la materia "${escuela.asignatura}" (${escuela.grado}):
+
+- Metodología NEM: ${proyecto.metodologiaNombre || "Proyecto NEM"}
+- Nombre del Proyecto: ${proyecto.nombreProyecto || bloque.contenidoContextualizado}
+- Problemática Comunitaria: ${proyecto.problematica || ""}
+- Producto Final: ${proyecto.productoFinal || ""}
+- PDA: ${bloque.pda}
+- Indicación adicional: ${promptExtra || "Alinear cada Hoja de Actividad directamente con las actividades y evidencia parcial de su Fase o Momento del proyecto."}
+
+Fases / Momentos del Proyecto (respeta los cambios hechos por el docente):
+${JSON.stringify(resumenFases, null, 2)}
+
+Genera la Hoja de Actividad actualizada para cada Fase o Momento listado.
+`.trim();
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: {
+        systemInstruction:
+          "Diseña una Hoja de Actividad por cada Fase o Momento del Proyecto NEM que guíe a los alumnos en las actividades e indagaciones de esa fase específica, con 3 ejercicios/actividades prácticas, guía de respuestas para el docente y reflexión/entregable de cierre de la fase.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            hojasPorFase: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  numero: { type: Type.INTEGER },
+                  hojaActividad: {
+                    type: Type.OBJECT,
+                    properties: {
+                      tituloHoja: { type: Type.STRING },
+                      instrucciones: { type: Type.STRING },
+                      notaTeorica: { type: Type.STRING },
+                      diagramType: { type: Type.STRING },
+                      ejercicios: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            enunciado: { type: Type.STRING },
+                            respuesta: { type: Type.STRING }
+                          },
+                          required: ["enunciado", "respuesta"]
+                        }
+                      },
+                      boletoSalida: { type: Type.STRING }
+                    },
+                    required: [
+                      "tituloHoja",
+                      "instrucciones",
+                      "notaTeorica",
+                      "diagramType",
+                      "ejercicios",
+                      "boletoSalida"
+                    ]
+                  }
+                },
+                required: ["numero", "hojaActividad"]
+              }
+            }
+          },
+          required: ["hojasPorFase"]
+        }
+      }
+    });
+
+    const parsed = JSON.parse((response.text ?? "{}").trim());
+    return res.json({ hojasPorFase: parsed.hojasPorFase || [] });
+  } catch (error) {
+    console.error("[sync-hojas-from-proyecto Error]:", error);
+    return res.status(500).json({
+      error: error?.message || "Error al sincronizar hojas de actividad del proyecto."
     });
   }
 });

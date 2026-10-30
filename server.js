@@ -10,7 +10,10 @@ const app = express();
 const PORT = 3000;
 const HOST = "0.0.0.0";
 
-app.use(express.json({ limit: "2mb" }));
+// Allow up to 25MB JSON payloads for base64 PDF uploads
+app.use(express.json({ limit: "25mb" }));
+
+const MODEL_NAME = "gemini-3.8-flash";
 
 // Shared Gemini client utility initialized on the server
 const getAIClient = () => {
@@ -27,7 +30,524 @@ const getAIClient = () => {
   });
 };
 
-// Server-side endpoint for generating contextualized NEM math sessions
+// ============================================================================
+// ETAPA 1: EXTRAER CONTENIDOS Y PDAs DESDE UN PDF DE PROGRAMA SINTÉTICO
+// ============================================================================
+app.post("/api/parse-sintetico-pdf", async (req, res) => {
+  try {
+    const ai = getAIClient();
+    if (!ai) {
+      return res.status(503).json({
+        error: "La clave GEMINI_API_KEY no está configurada en el servidor."
+      });
+    }
+
+    const { pdfBase64, escuela = {} } = req.body || {};
+    if (!pdfBase64) {
+      return res.status(400).json({ error: "No se recibió el archivo PDF en base64." });
+    }
+
+    const cleanBase64 = String(pdfBase64).replace(/^data:application\/pdf;base64,/, "");
+    const materia = escuela.asignatura || "Matemáticas";
+    const grado = escuela.grado || "3° de Secundaria";
+    const fase = escuela.fase || "Fase 6";
+    const campo = escuela.campoFormativo || "Saberes y Pensamiento Científico";
+
+    const promptText = `
+Analiza el documento PDF adjunto del Programa Sintético de la Nueva Escuela Mexicana (NEM).
+Extrae los Contenidos y Procesos de Desarrollo de Aprendizaje (PDA) que corresponden específicamente a:
+- Fase: ${fase}
+- Grado: ${grado}
+- Campo Formativo: ${campo}
+- Materia / Disciplina: ${materia}
+
+Si el PDF contiene varias disciplinas o grados, filtra los que correspondan a "${materia}" de "${grado}". Si el PDF es un documento curricular general, extrae o adapta entre 6 y 12 Contenidos y PDAs oficiales clave para ${materia} (${grado}).
+`.trim();
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: [
+        {
+          inlineData: {
+            mimeType: "application/pdf",
+            data: cleanBase64
+          }
+        },
+        { text: promptText }
+      ],
+      config: {
+        systemInstruction:
+          "Eres un especialista curricular de la Nueva Escuela Mexicana (SEP). Devuelve siempre JSON válido con los Contenidos y PDAs extraídos en español.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            contenidos: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  contenido: {
+                    type: Type.STRING,
+                    description: "Nombre oficial del Contenido del Programa Sintético."
+                  },
+                  pda: {
+                    type: Type.STRING,
+                    description: "Proceso de Desarrollo de Aprendizaje (PDA) del grado correspondiente."
+                  },
+                  ejesSugeridos: {
+                    type: Type.STRING,
+                    description: "Ejes articuladores de la NEM vinculados con este contenido."
+                  },
+                  semanasSugeridas: {
+                    type: Type.INTEGER,
+                    description: "Duración sugerida en semanas (1, 2 o 3)."
+                  },
+                  trimestreSugerido: {
+                    type: Type.INTEGER,
+                    description: "Trimestre sugerido (1, 2 o 3)."
+                  }
+                },
+                required: ["contenido", "pda", "ejesSugeridos", "semanasSugeridas", "trimestreSugerido"]
+              }
+            }
+          },
+          required: ["contenidos"]
+        }
+      }
+    });
+
+    const parsed = JSON.parse((response.text ?? "{}").trim());
+    return res.json({ contenidos: parsed.contenidos || [] });
+  } catch (error) {
+    console.error("[parse-sintetico-pdf Error]:", error);
+    return res.status(500).json({
+      error: error?.message || "No fue posible analizar el PDF con IA."
+    });
+  }
+});
+
+// ============================================================================
+// ETAPA 2A: REDACTAR O ENRIQUECER DIAGNÓSTICO SOCIOEDUCATIVO (PRIMER PLANO)
+// ============================================================================
+app.post("/api/generate-diagnostico", async (req, res) => {
+  try {
+    const ai = getAIClient();
+    if (!ai) {
+      return res.status(503).json({ error: "GEMINI_API_KEY no disponible." });
+    }
+
+    const { escuela = {}, diagnosticoActual = {}, promptExtra = "" } = req.body || {};
+
+    const prompt = `
+Redacta o enriquece el Primer Plano (Diagnóstico Socioeducativo / Lectura de la Realidad) para el Programa Analítico de la Nueva Escuela Mexicana con los siguientes datos reales:
+- Escuela: ${escuela.nombre} (CCT: ${escuela.cct})
+- Docente: ${escuela.docente}
+- Localidad / Municipio: ${escuela.municipio || "Guaymas, Sonora"}
+- Fase y Grado: ${escuela.fase || "Fase 6"} · ${escuela.grado || "3° de Secundaria"} (Grupos: ${escuela.grupos || "A, B"}, Turno: ${escuela.turno || "Matutino"})
+- Campo Formativo: ${escuela.campoFormativo || "Saberes y Pensamiento Científico"}
+- Materia / Disciplina: ${escuela.asignatura || "Matemáticas"}
+- Texto actual del docente (respetar y enriquecer este contexto): ${diagnosticoActual.comunidad || ""}
+- Indicaciones adicionales del docente: ${promptExtra || "Incluir características socioeconómicas, culturales y académicas pertinentes para contextualizar la asignatura."}
+`.trim();
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: {
+        systemInstruction:
+          "Eres un asesor técnico pedagógico experto en el Programa Analítico de la NEM en México. Responde en español formal y realista.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            comunidad: {
+              type: Type.STRING,
+              description: "Párrafo integral del diagnóstico comunitario, escolar y de los grupos."
+            },
+            areasPrioritarias: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  titulo: { type: Type.STRING },
+                  descripcion: { type: Type.STRING }
+                },
+                required: ["titulo", "descripcion"]
+              }
+            }
+          },
+          required: ["comunidad", "areasPrioritarias"]
+        }
+      }
+    });
+
+    const parsed = JSON.parse((response.text ?? "{}").trim());
+    return res.json({ diagnostico: parsed });
+  } catch (error) {
+    console.error("[generate-diagnostico Error]:", error);
+    return res.status(500).json({ error: error?.message || "Error al generar diagnóstico." });
+  }
+});
+
+// ============================================================================
+// ETAPA 2B: CONTEXTUALIZAR BLOQUES DEL PROGRAMA ANALÍTICO (SEGUNDO PLANO)
+// ============================================================================
+app.post("/api/generate-analitico", async (req, res) => {
+  try {
+    const ai = getAIClient();
+    if (!ai) {
+      return res.status(503).json({ error: "GEMINI_API_KEY no disponible." });
+    }
+
+    const { escuela = {}, diagnostico = {}, contenidosSinteticos = [], promptExtra = "" } = req.body || {};
+
+    const prompt = `
+Con base en los Contenidos y PDAs del Programa Sintético seleccionados por el docente y el Diagnóstico Socioeducativo de la escuela, construye la Contextualización y Dosificación Curricular (Segundo Plano del Programa Analítico NEM).
+
+Datos del Curso:
+- Escuela: ${escuela.nombre} (${escuela.cct}) en ${escuela.municipio || "México"}
+- Docente: ${escuela.docente}
+- Materia y Grado: ${escuela.asignatura} (${escuela.grado}, ${escuela.fase})
+- Diagnóstico Socioeducativo (Primer Plano): ${diagnostico.comunidad || ""}
+- Indicaciones adicionales del docente: ${promptExtra || "Contextualizar cada contenido con situaciones reales del municipio/comunidad y distribuir en los 3 trimestres."}
+
+Contenidos Sintéticos de entrada:
+${JSON.stringify(contenidosSinteticos, null, 2)}
+`.trim();
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: {
+        systemInstruction:
+          "Eres un experto en diseño curricular NEM. Transforma cada Contenido Sintético en un bloque contextualizado a la realidad comunitaria de la escuela, asignando semanas consecutivas y trimestre (1, 2 o 3).",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            bloques: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  trimestre: { type: Type.INTEGER },
+                  semanas: { type: Type.STRING, description: "Ej. 'Semanas 1 y 2' o 'Semanas 3 y 4'" },
+                  numSemanas: { type: Type.INTEGER },
+                  numSesiones: { type: Type.INTEGER },
+                  contenidoSintetico: { type: Type.STRING },
+                  contenidoContextualizado: { type: Type.STRING },
+                  pda: { type: Type.STRING },
+                  justificacion: { type: Type.STRING },
+                  ejesArticuladores: { type: Type.STRING }
+                },
+                required: [
+                  "trimestre",
+                  "semanas",
+                  "numSemanas",
+                  "numSesiones",
+                  "contenidoSintetico",
+                  "contenidoContextualizado",
+                  "pda",
+                  "justificacion",
+                  "ejesArticuladores"
+                ]
+              }
+            }
+          },
+          required: ["bloques"]
+        }
+      }
+    });
+
+    const parsed = JSON.parse((response.text ?? "{}").trim());
+    return res.json({ bloques: parsed.bloques || [] });
+  } catch (error) {
+    console.error("[generate-analitico Error]:", error);
+    return res.status(500).json({ error: error?.message || "Error al generar contextualización." });
+  }
+});
+
+// ============================================================================
+// ETAPA 3: PROPONER BLOQUES DE CODISEÑO CURRICULAR (TERCER PLANO)
+// ============================================================================
+app.post("/api/generate-codiseno", async (req, res) => {
+  try {
+    const ai = getAIClient();
+    if (!ai) {
+      return res.status(503).json({ error: "GEMINI_API_KEY no disponible." });
+    }
+
+    const { escuela = {}, diagnostico = {}, promptExtra = "" } = req.body || {};
+
+    const prompt = `
+Propón 2 bloques de Codiseño Curricular (Tercer Plano del Programa Analítico NEM) para incorporar saberes o necesidades locales/regionales que no vienen explícitamente en el Programa Sintético nacional, pero son prioritarios para los alumnos.
+
+Datos del Curso:
+- Escuela: ${escuela.nombre} (${escuela.cct}) en ${escuela.municipio || "México"}
+- Materia y Grado: ${escuela.asignatura} (${escuela.grado}, ${escuela.fase})
+- Campo Formativo: ${escuela.campoFormativo}
+- Diagnóstico Socioeducativo: ${diagnostico.comunidad || ""}
+- Solicitud específica del docente para el Codiseño: ${promptExtra || "Atender necesidades reales de la comunidad y fortalecer habilidades fundamentales de la asignatura."}
+`.trim();
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: {
+        systemInstruction:
+          "Diseña bloques de Codiseño pertinentes para la Nueva Escuela Mexicana (trimestre = 4 para identificarlos como Codiseño). Responde en español.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            bloquesCodiseno: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  semanas: { type: Type.STRING, description: "Ej. 'Codiseño 1 (1 Semana)'" },
+                  numSemanas: { type: Type.INTEGER },
+                  numSesiones: { type: Type.INTEGER },
+                  contenidoSintetico: { type: Type.STRING, description: "Contenido de Codiseño Local" },
+                  contenidoContextualizado: { type: Type.STRING },
+                  pda: { type: Type.STRING, description: "PDA específico creado en Codiseño" },
+                  justificacion: { type: Type.STRING, description: "Justificación comunitaria y pedagógica del Codiseño" },
+                  ejesArticuladores: { type: Type.STRING }
+                },
+                required: [
+                  "semanas",
+                  "numSemanas",
+                  "numSesiones",
+                  "contenidoSintetico",
+                  "contenidoContextualizado",
+                  "pda",
+                  "justificacion",
+                  "ejesArticuladores"
+                ]
+              }
+            }
+          },
+          required: ["bloquesCodiseno"]
+        }
+      }
+    });
+
+    const parsed = JSON.parse((response.text ?? "{}").trim());
+    return res.json({ bloquesCodiseno: parsed.bloquesCodiseno || [] });
+  } catch (error) {
+    console.error("[generate-codiseno Error]:", error);
+    return res.status(500).json({ error: error?.message || "Error al generar Codiseño." });
+  }
+});
+
+// ============================================================================
+// ETAPA 4: GENERAR PLAN DE CLASE COMPLETO DE UN BLOQUE DESDE ANALÍTICO/CODISEÑO
+// ============================================================================
+app.post("/api/generate-plan-bloque", async (req, res) => {
+  try {
+    const ai = getAIClient();
+    if (!ai) {
+      return res.status(503).json({ error: "GEMINI_API_KEY no disponible." });
+    }
+
+    const { escuela = {}, diagnostico = {}, bloque = {}, promptExtra = "" } = req.body || {};
+    const numSesiones = Math.min(10, Math.max(3, Number(bloque.numSesiones) || 5));
+
+    const prompt = `
+Eres el docente "${escuela.docente}" de la escuela "${escuela.nombre}" (CCT: ${escuela.cct}) ubicada en ${escuela.municipio || "México"}.
+Impartes la materia de "${escuela.asignatura}" en ${escuela.grado} (${escuela.fase}), grupos ${escuela.grupos} (${escuela.turno}).
+
+Con base en el Diagnóstico Socioeducativo y el Bloque del Programa Analítico / Codiseño (que ya incluye las ediciones del docente), genera el PLAN DE CLASE COMPLETO con ${numSesiones} sesiones secuenciales (Inicio 10 min, Desarrollo 30 min, Cierre 10 min) y sus Hojas de Actividad.
+
+Contexto del Diagnóstico:
+${diagnostico.comunidad || ""}
+
+Datos del Bloque (Programa Analítico / Codiseño):
+- ID: ${bloque.id} (${bloque.semanas})
+- Contenido Sintético: ${bloque.contenidoSintetico}
+- Contenido Contextualizado: ${bloque.contenidoContextualizado}
+- PDA: ${bloque.pda}
+- Justificación Pedagógica: ${bloque.justificacion || ""}
+- Ejes Articuladores: ${bloque.ejesArticuladores || ""}
+- Diagrama sugerido: ${bloque.diagramType || "concept_map"}
+- Instrucción adicional del docente: ${promptExtra || "Desarrollar una progresión didáctica clara desde la indagación inicial hasta la aplicación práctica y evaluación formativa."}
+`.trim();
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: {
+        systemInstruction:
+          "Redacta las sesiones en primera persona del singular como planeación docente oficial NEM lista para el aula. Cada sesión debe incluir su hojaActividad con 3 actividades/ejercicios graduados y sus respuestas para el docente.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            periodo: { type: Type.STRING },
+            tiempoRealizacion: { type: Type.STRING },
+            evaluacionFormativa: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            },
+            sesiones: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  numero: { type: Type.INTEGER },
+                  semana: { type: Type.STRING },
+                  titulo: { type: Type.STRING },
+                  inicio: { type: Type.STRING },
+                  desarrollo: { type: Type.STRING },
+                  cierre: { type: Type.STRING },
+                  hojaActividad: {
+                    type: Type.OBJECT,
+                    properties: {
+                      tituloHoja: { type: Type.STRING },
+                      instrucciones: { type: Type.STRING },
+                      notaTeorica: { type: Type.STRING },
+                      diagramType: { type: Type.STRING },
+                      ejercicios: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            enunciado: { type: Type.STRING },
+                            respuesta: { type: Type.STRING }
+                          },
+                          required: ["enunciado", "respuesta"]
+                        }
+                      },
+                      boletoSalida: { type: Type.STRING }
+                    },
+                    required: [
+                      "tituloHoja",
+                      "instrucciones",
+                      "notaTeorica",
+                      "diagramType",
+                      "ejercicios",
+                      "boletoSalida"
+                    ]
+                  }
+                },
+                required: ["numero", "semana", "titulo", "inicio", "desarrollo", "cierre", "hojaActividad"]
+              }
+            }
+          },
+          required: ["periodo", "tiempoRealizacion", "evaluacionFormativa", "sesiones"]
+        }
+      }
+    });
+
+    const planGenerado = JSON.parse((response.text ?? "{}").trim());
+    return res.json({ plan: planGenerado });
+  } catch (error) {
+    console.error("[generate-plan-bloque Error]:", error);
+    return res.status(500).json({ error: error?.message || "Error al generar el Plan de Clase." });
+  }
+});
+
+// ============================================================================
+// ETAPA 5: SINCRONIZAR / GENERAR HOJAS DE ACTIVIDAD DESDE EL PLAN DE CLASE EDITADO
+// ============================================================================
+app.post("/api/sync-hojas-from-plan", async (req, res) => {
+  try {
+    const ai = getAIClient();
+    if (!ai) {
+      return res.status(503).json({ error: "GEMINI_API_KEY no disponible." });
+    }
+
+    const { escuela = {}, bloque = {}, sesionesPlan = [], promptExtra = "" } = req.body || {};
+
+    const resumenSesiones = sesionesPlan.map((s) => ({
+      numero: s.numero,
+      titulo: s.titulo,
+      inicio: s.inicio,
+      desarrollo: s.desarrollo,
+      cierre: s.cierre,
+      diagramType: s.hojaActividad?.diagramType || bloque.diagramType || "concept_map"
+    }));
+
+    const prompt = `
+El docente "${escuela.docente}" (${escuela.nombre}, ${escuela.municipio || "México"}) ha diseñado y editado las siguientes sesiones en su Plan de Clase de la materia "${escuela.asignatura}" (${escuela.grado}):
+
+- Bloque: ${bloque.semanas} · ${bloque.contenidoContextualizado}
+- PDA: ${bloque.pda}
+- Indicación extra para las hojas de actividad: ${promptExtra || "Alinear estrictamente cada hoja de actividad con lo que dice el Inicio, Desarrollo y Cierre de su sesión correspondiente."}
+
+Sesiones actuales del Plan de Clase (respeta cada cambio hecho por el docente):
+${JSON.stringify(resumenSesiones, null, 2)}
+
+Genera la Hoja de Actividad actualizada para cada una de las sesiones listadas.
+`.trim();
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: {
+        systemInstruction:
+          "Diseña hojas de trabajo para el estudiante que reflejen con exactitud las actividades planteadas por el docente en cada sesión del Plan de Clase. Incluye 3 ejercicios/actividades claras con su respuesta para el docente y un boleto de salida.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            hojasPorSesion: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  numero: { type: Type.INTEGER },
+                  hojaActividad: {
+                    type: Type.OBJECT,
+                    properties: {
+                      tituloHoja: { type: Type.STRING },
+                      instrucciones: { type: Type.STRING },
+                      notaTeorica: { type: Type.STRING },
+                      diagramType: { type: Type.STRING },
+                      ejercicios: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            enunciado: { type: Type.STRING },
+                            respuesta: { type: Type.STRING }
+                          },
+                          required: ["enunciado", "respuesta"]
+                        }
+                      },
+                      boletoSalida: { type: Type.STRING }
+                    },
+                    required: [
+                      "tituloHoja",
+                      "instrucciones",
+                      "notaTeorica",
+                      "diagramType",
+                      "ejercicios",
+                      "boletoSalida"
+                    ]
+                  }
+                },
+                required: ["numero", "hojaActividad"]
+              }
+            }
+          },
+          required: ["hojasPorSesion"]
+        }
+      }
+    });
+
+    const parsed = JSON.parse((response.text ?? "{}").trim());
+    return res.json({ hojasPorSesion: parsed.hojasPorSesion || [] });
+  } catch (error) {
+    console.error("[sync-hojas-from-plan Error]:", error);
+    return res.status(500).json({ error: error?.message || "Error al sincronizar hojas de actividad." });
+  }
+});
+
+// ============================================================================
+// GENERACIÓN DE UNA SESIÓN INDIVIDUAL (MULTI-MATERIA Y CONTEXTUALIZADA)
+// ============================================================================
 app.post("/api/generate-session", async (req, res) => {
   try {
     const ai = getAIClient();
@@ -37,100 +557,66 @@ app.post("/api/generate-session", async (req, res) => {
       });
     }
 
-    const { bloqueInfo, contexto, customPrompt, nextSessionNumber } = req.body || {};
+    const { bloqueInfo, contexto, customPrompt, nextSessionNumber, escuela = {} } = req.body || {};
     if (!bloqueInfo || !contexto) {
       return res.status(400).json({ error: "Faltan datos curriculares del bloque o contexto." });
     }
 
+    const materia = escuela.asignatura || "Matemáticas";
+    const grado = escuela.grado || "3° de Secundaria";
+    const nombreEsc = escuela.nombre || "Escuela Secundaria General Abelardo L. Rodríguez";
+    const municipio = escuela.municipio || "Guaymas, Sonora";
+
     const prompt = `
-Eres un profesor experto de Matemáticas de 3° de Secundaria en México bajo el modelo de la Nueva Escuela Mexicana (NEM), en la Escuela Secundaria General Abelardo L. Rodríguez de Guaymas, Sonora (Grupos 3°G y 3°H, turno vespertino).
-Genera UNA sesión didáctica completa (Inicio 10 min, Desarrollo 30 min, Cierre 10 min) y su respectiva Hoja de Actividad para el aula con 3 ejercicios graduados y sus respuestas exactas.
+Eres un profesor experto de ${materia} de ${grado} en México bajo el modelo de la Nueva Escuela Mexicana (NEM), en la escuela ${nombreEsc} de ${municipio} (Grupos ${escuela.grupos || "3°G y 3°H"}, turno ${escuela.turno || "vespertino"}).
+Genera UNA sesión didáctica completa (Inicio 10 min, Desarrollo 30 min, Cierre 10 min) y su respectiva Hoja de Actividad para el aula con 3 ejercicios/actividades graduadas y sus respuestas exactas.
 
 Datos curriculares:
+- Materia y Grado: ${materia} · ${grado}
 - Bloque / Semanas: ${bloqueInfo.semanas}
 - Contenido Sintético: ${bloqueInfo.contenidoSintetico}
 - Contextualización: ${bloqueInfo.contenidoContextualizado}
 - PDA: ${bloqueInfo.pda}
-- Contexto local de Guaymas a utilizar: ${contexto.nombre} (${contexto.escenario}; unidades sugeridas: ${contexto.unidades})
-- Instrucción específica del docente: ${customPrompt || "Generar 3 ejercicios claros, progresivos y retadores con datos numéricos precisos y solución paso a paso."}
+- Contexto local a utilizar: ${contexto.nombre} (${contexto.escenario}; elementos sugeridos: ${contexto.unidades})
+- Instrucción específica del docente: ${customPrompt || "Generar 3 actividades o ejercicios claros, progresivos y retadores con solución paso a paso."}
 - Número de sesión a asignar: ${nextSessionNumber || 6}
 - Tipo de diagrama por defecto: ${bloqueInfo.diagramType || "algebra_rect"}
 `.trim();
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
+      model: MODEL_NAME,
       contents: prompt,
       config: {
-        systemInstruction:
-          "Responde siempre en español con rigor matemático para 3° de secundaria (Fase 6 NEM). Redacta las actividades de inicio, desarrollo y cierre en primera persona del singular como planeación docente lista para el aula.",
+        systemInstruction: `Responde siempre en español con rigor pedagógico para ${materia} de ${grado} (NEM). Redacta las actividades de inicio, desarrollo y cierre en primera persona del singular como planeación docente lista para el aula.`,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            numero: {
-              type: Type.INTEGER,
-              description: "Número consecutivo de la sesión."
-            },
-            semana: {
-              type: Type.STRING,
-              description: "Semana o semanas del bloque."
-            },
-            titulo: {
-              type: Type.STRING,
-              description: "Título atractivo y pedagógico de la sesión."
-            },
-            inicio: {
-              type: Type.STRING,
-              description: "Actividad de inicio (10 min) redactada en primera persona."
-            },
-            desarrollo: {
-              type: Type.STRING,
-              description: "Actividad de desarrollo (30 min) detallada en primera persona."
-            },
-            cierre: {
-              type: Type.STRING,
-              description: "Actividad de cierre (10 min) y verificación formativa."
-            },
+            numero: { type: Type.INTEGER },
+            semana: { type: Type.STRING },
+            titulo: { type: Type.STRING },
+            inicio: { type: Type.STRING },
+            desarrollo: { type: Type.STRING },
+            cierre: { type: Type.STRING },
             hojaActividad: {
               type: Type.OBJECT,
               properties: {
-                tituloHoja: {
-                  type: Type.STRING,
-                  description: "Título de la Hoja de Trabajo para el alumno."
-                },
-                instrucciones: {
-                  type: Type.STRING,
-                  description: "Instrucciones claras y directas para el estudiante."
-                },
-                notaTeorica: {
-                  type: Type.STRING,
-                  description: "Fórmula o recordatorio matemático clave."
-                },
-                diagramType: {
-                  type: Type.STRING,
-                  description: "Identificador del diagrama SVG del bloque."
-                },
+                tituloHoja: { type: Type.STRING },
+                instrucciones: { type: Type.STRING },
+                notaTeorica: { type: Type.STRING },
+                diagramType: { type: Type.STRING },
                 ejercicios: {
                   type: Type.ARRAY,
                   items: {
                     type: Type.OBJECT,
                     properties: {
-                      enunciado: {
-                        type: Type.STRING,
-                        description: "Enunciado numerado del problema o ejercicio."
-                      },
-                      respuesta: {
-                        type: Type.STRING,
-                        description: "Procedimiento resumido y respuesta exacta para la guía docente."
-                      }
+                      enunciado: { type: Type.STRING },
+                      respuesta: { type: Type.STRING }
                     },
                     required: ["enunciado", "respuesta"]
                   }
                 },
-                boletoSalida: {
-                  type: Type.STRING,
-                  description: "Pregunta o ejercicio breve de evaluación formativa de cierre."
-                }
+                boletoSalida: { type: Type.STRING }
               },
               required: [
                 "tituloHoja",
@@ -142,15 +628,7 @@ Datos curriculares:
               ]
             }
           },
-          required: [
-            "numero",
-            "semana",
-            "titulo",
-            "inicio",
-            "desarrollo",
-            "cierre",
-            "hojaActividad"
-          ]
+          required: ["numero", "semana", "titulo", "inicio", "desarrollo", "cierre", "hojaActividad"]
         }
       }
     });

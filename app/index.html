@@ -4,26 +4,55 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Planeación Didáctica y Hojas de Actividad | Matemáticas 3° NEM</title>
-  <meta name="description" content="Sistema de Planeación Didáctica, Programa Analítico y Hojas de Actividad para Matemáticas 3° de Secundaria (Nueva Escuela Mexicana - Fase 6)." />
+  <meta name="description" content="Sistema de Planeación Didáctica, Programa Analítico, Codiseño y Hojas de Actividad con IA para todas las materias y grados (Nueva Escuela Mexicana)." />
   <meta property="og:title" content="Sistema de Planeación Didáctica y Hojas de Actividad | Matemáticas 3° NEM" />
-  <meta property="og:description" content="Sistema de Planeación Didáctica, Programa Analítico y Hojas de Actividad para Matemáticas 3° de Secundaria (Nueva Escuela Mexicana - Fase 6)." />
+  <meta property="og:description" content="Sistema de Planeación Didáctica, Programa Analítico, Codiseño y Hojas de Actividad con IA para todas las materias y grados (Nueva Escuela Mexicana)." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..600&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <!-- BARRA SUPERIOR INSTITUCIONAL (3-ZONE TOP BAR CONTRACT) -->
+  <!-- BARRA SUPERIOR INSTITUCIONAL CON SELECTOR DE CURSO Y FLUJO EN 5 ETAPAS -->
   <header class="app-topbar">
-    <div class="brand-wordmark">
-      Matemáticas 3° NEM · Sec. Abelardo L. Rodríguez
+    <div class="topbar-brand-cluster">
+      <div class="brand-wordmark" id="topbarWordmark">
+        Planeación NEM · Sec. Abelardo L. Rodríguez
+      </div>
+      <div class="course-switcher-wrap">
+        <select
+          id="courseSelectDropdown"
+          class="course-select-dropdown"
+          aria-label="Seleccionar Curso o Materia Activa"
+          onchange="AppController.switchCourse(this.value)"
+        ></select>
+        <button
+          type="button"
+          class="btn-new-course"
+          onclick="AppController.createNewCourseInteractive()"
+          title="Crear planeación para una nueva materia o grado"
+        >
+          + Nueva Materia
+        </button>
+      </div>
     </div>
 
-    <nav class="nav-tabs" aria-label="Navegación principal">
-      <button class="nav-tab-btn active" data-tab="planeacion">Plan de Clase</button>
-      <button class="nav-tab-btn" data-tab="hojas">Hojas de Actividad</button>
-      <button class="nav-tab-btn" data-tab="analitico">Programa Analítico</button>
-      <button class="nav-tab-btn" data-tab="generador">Generador IA y Ajustes</button>
+    <nav class="nav-tabs" aria-label="Flujo Pedagógico NEM en 5 Etapas">
+      <button class="nav-tab-btn" data-tab="sintetico">
+        <span class="step-num">1</span> Datos y Sintético (PDF)
+      </button>
+      <button class="nav-tab-btn" data-tab="analitico">
+        <span class="step-num">2</span> Programa Analítico
+      </button>
+      <button class="nav-tab-btn" data-tab="codiseno">
+        <span class="step-num">3</span> Codiseño
+      </button>
+      <button class="nav-tab-btn active" data-tab="planeacion">
+        <span class="step-num">4</span> Planes de Clase
+      </button>
+      <button class="nav-tab-btn" data-tab="hojas">
+        <span class="step-num">5</span> Hojas de Actividad
+      </button>
     </nav>
 
     <div class="topbar-action">
@@ -34,7 +63,7 @@
   </header>
 
   <!-- ESTRUCTURA PRINCIPAL -->
-  <div class="app-layout">
+  <div class="app-layout" id="appLayoutContainer">
     <!-- BARRA LATERAL: SELECTOR DE BLOQUES Y SEMANAS -->
     <aside class="app-sidebar" id="appSidebar">
       <button
@@ -57,7 +86,7 @@
           <button class="trim-btn" data-trim="4">Codiseño</button>
         </div>
         <button class="trim-btn trim-btn-full" data-trim="0">
-          Ciclo Completo (38 Semanas + Codiseño)
+          Ciclo Completo (Semanas + Codiseño)
         </button>
 
         <input
@@ -78,6 +107,15 @@
     <!-- ÁREA DE TRABAJO Y VISTA PREVIA DE DOCUMENTOS -->
     <main id="mainContentContainer" class="app-main"></main>
   </div>
+
+  <!-- INPUT OCULTO PARA SUBIR PDF DE PROGRAMA SINTÉTICO -->
+  <input
+    type="file"
+    id="sinteticoPdfInput"
+    accept=".pdf,application/pdf"
+    style="display:none;"
+    onchange="AppController.handleSinteticoPdfUpload(event)"
+  />
 
   <!-- INPUT OCULTO PARA IMPORTAR RESPALDO JSON -->
   <input
@@ -108,6 +146,7 @@
   <script src="/node_modules/jspdf/dist/jspdf.umd.min.js"></script>
   <script src="js/svg_diagrams.js"></script>
   <script src="data/programa_analitico_data.js"></script>
+  <script src="data/catalogo_sintetico_nem.js"></script>
   <script src="data/planeaciones_trimestre1.js"></script>
   <script src="data/planeaciones_trimestre2_y_3.js"></script>
   <script src="js/session_expander.js"></script>

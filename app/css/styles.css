@@ -132,6 +132,14 @@ h1, h2, h3, h4, .brand-wordmark, .nem-table-title, .worksheet-title-banner {
   min-height: calc(100vh - 60px);
 }
 
+.app-layout.sidebar-hidden {
+  grid-template-columns: 1fr;
+}
+
+.app-layout.sidebar-hidden .app-sidebar {
+  display: none !important;
+}
+
 /* ================= BARRA LATERAL (SELECTOR DE SEMANAS) ================= */
 .app-sidebar {
   background: #ffffff;
@@ -1130,3 +1138,131 @@ h1, h2, h3, h4, .brand-wordmark, .nem-table-title, .worksheet-title-banner {
     padding: 7px 10px;
   }
 }
+
+/* ================= SELECTOR DE CURSO Y STEPPER DE 5 ETAPAS ================= */
+.topbar-brand-cluster {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.course-switcher-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.course-select-dropdown {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  max-width: 295px;
+}
+
+.course-select-dropdown option {
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.btn-new-course {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: var(--radius-sm);
+  padding: 4px 9px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-new-course:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-right: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-tab-btn.active .step-num {
+  background: #ffffff;
+  color: var(--nem-guinda-dark);
+}
+
+.pdf-dropzone {
+  border: 2px dashed var(--nem-guinda);
+  background: #fffafa;
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+  transition: background-color 0.16s ease, border-color 0.16s ease;
+  cursor: pointer;
+}
+
+.pdf-dropzone:hover {
+  background: var(--nem-terracota-light);
+}
+
+.stage-guide-banner {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.stage-guide-kicker {
+  font-size: 0.73rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--nem-guinda);
+}
+
+.stage-guide-title {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-top: 2px;
+}
+
+.stage-guide-desc {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.ai-action-box {
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+

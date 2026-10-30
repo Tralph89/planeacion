@@ -327,22 +327,156 @@ window.SVGDiagrams = {
       </svg>`;
   },
 
+  // 11. Mapa Conceptual / Organizador Gráfico (Español, Ciencias, Humanidades)
+  conceptMap(opts = {}) {
+    const title = (opts.title || "Mapa Conceptual / Organizador de Ideas Clave").slice(0, 58);
+    return `
+      <svg viewBox="0 0 480 185" width="100%" style="max-width:480px;background:#ffffff;border:1px solid #cbd5e1;border-radius:6px;">
+        <text x="240" y="18" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#8b1d41" font-family="Arial">${title}</text>
+        <rect x="155" y="28" width="170" height="34" rx="8" fill="#8b1d41" stroke="#691430" stroke-width="1.8"/>
+        <text x="240" y="49" font-size="11" font-weight="bold" text-anchor="middle" fill="#ffffff" font-family="Arial">Tema / Concepto Central</text>
+        <line x1="200" y1="62" x2="85" y2="95" stroke="#475569" stroke-width="1.8"/>
+        <line x1="240" y1="62" x2="240" y2="95" stroke="#475569" stroke-width="1.8"/>
+        <line x1="280" y1="62" x2="395" y2="95" stroke="#475569" stroke-width="1.8"/>
+        <rect x="20" y="95" width="130" height="72" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+        <text x="85" y="114" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#92400e">Idea Principal 1</text>
+        <line x1="32" y1="134" x2="138" y2="134" stroke="#cbd5e1" stroke-dasharray="3,2"/>
+        <line x1="32" y1="152" x2="138" y2="152" stroke="#cbd5e1" stroke-dasharray="3,2"/>
+        <rect x="175" y="95" width="130" height="72" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+        <text x="240" y="114" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#0369a1">Idea Principal 2</text>
+        <line x1="187" y1="134" x2="293" y2="134" stroke="#cbd5e1" stroke-dasharray="3,2"/>
+        <line x1="187" y1="152" x2="293" y2="152" stroke="#cbd5e1" stroke-dasharray="3,2"/>
+        <rect x="330" y="95" width="130" height="72" rx="6" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+        <text x="395" y="114" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#166534">Aplicación Comunitaria</text>
+        <line x1="342" y1="134" x2="448" y2="134" stroke="#cbd5e1" stroke-dasharray="3,2"/>
+        <line x1="342" y1="152" x2="448" y2="152" stroke="#cbd5e1" stroke-dasharray="3,2"/>
+      </svg>`;
+  },
+
+  // 12. Línea del Tiempo / Secuencia de Procesos (Historia, Español, Ciencias)
+  timelineDiagram() {
+    return `
+      <svg viewBox="0 0 480 175" width="100%" style="max-width:480px;background:#ffffff;border:1px solid #cbd5e1;border-radius:6px;">
+        <text x="240" y="20" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#8b1d41" font-family="Arial">Línea del Tiempo / Secuencia Cronológica de Sucesos</text>
+        <line x1="35" y1="90" x2="445" y2="90" stroke="#8b1d41" stroke-width="3"/>
+        <polygon points="445,84 458,90 445,96" fill="#8b1d41"/>
+        <!-- Hitos -->
+        <circle cx="85" cy="90" r="8" fill="#ffffff" stroke="#8b1d41" stroke-width="3"/>
+        <rect x="30" y="34" width="110" height="42" rx="5" fill="#fef3c7" stroke="#d97706" stroke-width="1.4"/>
+        <text x="85" y="50" font-size="10" font-weight="bold" text-anchor="middle" fill="#92400e">Etapa / Hito 1</text>
+        <text x="85" y="66" font-size="9" text-anchor="middle" fill="#475569">Fecha / Causa</text>
+
+        <circle cx="240" cy="90" r="8" fill="#ffffff" stroke="#0284c7" stroke-width="3"/>
+        <rect x="185" y="106" width="110" height="44" rx="5" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.4"/>
+        <text x="240" y="122" font-size="10" font-weight="bold" text-anchor="middle" fill="#0369a1">Etapa / Hito 2</text>
+        <text x="240" y="138" font-size="9" text-anchor="middle" fill="#475569">Desarrollo / Proceso</text>
+
+        <circle cx="395" cy="90" r="8" fill="#ffffff" stroke="#15803d" stroke-width="3"/>
+        <rect x="340" y="34" width="110" height="42" rx="5" fill="#dcfce7" stroke="#15803d" stroke-width="1.4"/>
+        <text x="395" y="50" font-size="10" font-weight="bold" text-anchor="middle" fill="#166534">Etapa / Hito 3</text>
+        <text x="395" y="66" font-size="9" text-anchor="middle" fill="#475569">Consecuencia Actual</text>
+      </svg>`;
+  },
+
+  // 13. Esquema de Indagación Científica / Laboratorio (Biología, Física, Química)
+  scientificMethodDiagram() {
+    return `
+      <svg viewBox="0 0 480 175" width="100%" style="max-width:480px;background:#ffffff;border:1px solid #cbd5e1;border-radius:6px;">
+        <text x="240" y="20" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#8b1d41" font-family="Arial">Ruta de Indagación Científica y Registro Experimental</text>
+        <rect x="20" y="42" width="100" height="110" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/>
+        <text x="70" y="62" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#92400e">1. Observación</text>
+        <text x="70" y="80" font-size="9.5" text-anchor="middle" fill="#475569">Fenómeno en la</text>
+        <text x="70" y="94" font-size="9.5" text-anchor="middle" fill="#475569">comunidad</text>
+
+        <text x="128" y="98" font-size="14" font-weight="bold" fill="#8b1d41">➔</text>
+
+        <rect x="142" y="42" width="100" height="110" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+        <text x="192" y="62" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#0369a1">2. Hipótesis</text>
+        <text x="192" y="80" font-size="9.5" text-anchor="middle" fill="#475569">Variables y</text>
+        <text x="192" y="94" font-size="9.5" text-anchor="middle" fill="#475569">predicción</text>
+
+        <text x="250" y="98" font-size="14" font-weight="bold" fill="#8b1d41">➔</text>
+
+        <rect x="264" y="42" width="100" height="110" rx="6" fill="#f3e8ff" stroke="#7e22ce" stroke-width="1.6"/>
+        <text x="314" y="62" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#6b21a8">3. Experimento</text>
+        <text x="314" y="80" font-size="9.5" text-anchor="middle" fill="#475569">Medición y</text>
+        <text x="314" y="94" font-size="9.5" text-anchor="middle" fill="#475569">datos</text>
+
+        <text x="372" y="98" font-size="14" font-weight="bold" fill="#8b1d41">➔</text>
+
+        <rect x="386" y="42" width="78" height="110" rx="6" fill="#dcfce7" stroke="#15803d" stroke-width="1.6"/>
+        <text x="425" y="62" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#166534">4. Conclusión</text>
+        <text x="425" y="80" font-size="9.5" text-anchor="middle" fill="#475569">Evidencia y</text>
+        <text x="425" y="94" font-size="9.5" text-anchor="middle" fill="#475569">solución</text>
+      </svg>`;
+  },
+
+  // 14. Diagrama Causa - Efecto / Problemática Comunitaria (Geografía, FCE, Tecnología)
+  causeEffectDiagram() {
+    return `
+      <svg viewBox="0 0 480 175" width="100%" style="max-width:480px;background:#ffffff;border:1px solid #cbd5e1;border-radius:6px;">
+        <text x="240" y="20" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#8b1d41" font-family="Arial">Análisis Crítico: Causas, Problemática Comunitaria y Propuestas de Acción</text>
+        <rect x="20" y="42" width="130" height="50" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+        <text x="85" y="62" font-size="10" font-weight="bold" text-anchor="middle" fill="#991b1b">Causas / Factores</text>
+        <line x1="32" y1="76" x2="138" y2="76" stroke="#fca5a5" stroke-dasharray="3,2"/>
+
+        <rect x="20" y="104" width="130" height="50" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+        <text x="85" y="124" font-size="10" font-weight="bold" text-anchor="middle" fill="#92400e">Contexto Local</text>
+        <line x1="32" y1="138" x2="138" y2="138" stroke="#fcd34d" stroke-dasharray="3,2"/>
+
+        <line x1="150" y1="67" x2="185" y2="95" stroke="#475569" stroke-width="2"/>
+        <line x1="150" y1="129" x2="185" y2="101" stroke="#475569" stroke-width="2"/>
+
+        <rect x="185" y="68" width="120" height="60" rx="8" fill="#8b1d41"/>
+        <text x="245" y="95" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#ffffff">Situación o Reto</text>
+        <text x="245" y="111" font-size="9.5" text-anchor="middle" fill="#fde68a">a Resolver (PDA)</text>
+
+        <line x1="305" y1="98" x2="338" y2="98" stroke="#15803d" stroke-width="2.2"/>
+        <rect x="338" y="45" width="124" height="106" rx="6" fill="#dcfce7" stroke="#15803d" stroke-width="1.6"/>
+        <text x="400" y="66" font-size="10" font-weight="bold" text-anchor="middle" fill="#166534">Propuesta / Efecto</text>
+        <line x1="350" y1="88" x2="450" y2="88" stroke="#86efac" stroke-dasharray="3,2"/>
+        <line x1="350" y1="112" x2="450" y2="112" stroke="#86efac" stroke-dasharray="3,2"/>
+        <line x1="350" y1="134" x2="450" y2="134" stroke="#86efac" stroke-dasharray="3,2"/>
+      </svg>`;
+  },
+
+  // 15. Cuadro Comparativo / Matriz de Análisis (Todas las materias)
+  comparativeTableDiagram() {
+    return `
+      <svg viewBox="0 0 480 170" width="100%" style="max-width:480px;background:#ffffff;border:1px solid #cbd5e1;border-radius:6px;">
+        <text x="240" y="20" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#8b1d41" font-family="Arial">Cuadro Comparativo de Análisis y Contrastación</text>
+        <rect x="20" y="32" width="440" height="26" fill="#8b1d41"/>
+        <text x="90" y="49" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#ffffff">Criterio / Aspecto</text>
+        <text x="235" y="49" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#ffffff">Elemento o Postura A</text>
+        <text x="385" y="49" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#ffffff">Elemento o Postura B</text>
+        <rect x="20" y="58" width="440" height="46" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+        <rect x="20" y="104" width="440" height="46" fill="#f8fafc" stroke="#94a3b8" stroke-width="1"/>
+        <line x1="160" y1="32" x2="160" y2="150" stroke="#94a3b8" stroke-width="1.2"/>
+        <line x1="310" y1="32" x2="310" y2="150" stroke="#94a3b8" stroke-width="1.2"/>
+      </svg>`;
+  },
+
   catalog: [
-    { id: "compound_lt", label: "Figuras Compuestas (L y Fachada en T)" },
-    { id: "algebra_rect", label: "Álgebra Geométrica (Rectángulos y Áreas)" },
-    { id: "algebra_prisma", label: "Volúmenes Algebraicos (Cubo y Prismas)" },
-    { id: "open_box", label: "Ecuación Cuadrática (Caja sin Tapa)" },
-    { id: "cartesian", label: "Plano Cartesiano (Variación Lineal)" },
-    { id: "cartesian_parabola", label: "Plano Cartesiano (Parábola Cuadrática)" },
-    { id: "cartesian_inversa", label: "Plano Cartesiano (Proporcionalidad Inversa)" },
-    { id: "similar_triangles", label: "Semejanza de Triángulos y Teorema de Tales" },
-    { id: "solids_3d", label: "Cuerpos Redondos (Cilindro, Cono y Esfera)" },
-    { id: "pythagoras", label: "Teorema de Pitágoras (Triángulo Rectángulo)" },
-    { id: "trigonometry", label: "Razones Trigonométricas (Sen, Cos, Tan)" },
-    { id: "statistics", label: "Estadística (Histograma y Polígono)" },
-    { id: "probability", label: "Probabilidad (Diagrama de Árbol)" },
-    { id: "codiseno_sectors", label: "Productos Notables y Sectores Circulares" },
-    { id: "none", label: "Sin Diagrama (Más espacio para operaciones)" }
+    { id: "compound_lt", label: "Matemáticas: Figuras Compuestas (L y Fachada en T)" },
+    { id: "algebra_rect", label: "Matemáticas: Álgebra Geométrica (Rectángulos y Áreas)" },
+    { id: "algebra_prisma", label: "Matemáticas: Volúmenes Algebraicos (Cubo y Prismas)" },
+    { id: "open_box", label: "Matemáticas: Ecuación Cuadrática (Caja sin Tapa)" },
+    { id: "cartesian", label: "Matemáticas: Plano Cartesiano (Variación Lineal)" },
+    { id: "cartesian_parabola", label: "Matemáticas: Plano Cartesiano (Parábola Cuadrática)" },
+    { id: "cartesian_inversa", label: "Matemáticas: Plano Cartesiano (Proporcionalidad Inversa)" },
+    { id: "similar_triangles", label: "Matemáticas: Semejanza de Triángulos y Teorema de Tales" },
+    { id: "solids_3d", label: "Matemáticas: Cuerpos Redondos (Cilindro, Cono y Esfera)" },
+    { id: "pythagoras", label: "Matemáticas: Teorema de Pitágoras (Triángulo Rectángulo)" },
+    { id: "trigonometry", label: "Matemáticas: Razones Trigonométricas (Sen, Cos, Tan)" },
+    { id: "statistics", label: "Matemáticas/Ciencias: Estadística (Histograma y Polígono)" },
+    { id: "probability", label: "Matemáticas: Probabilidad (Diagrama de Árbol)" },
+    { id: "codiseno_sectors", label: "Matemáticas: Productos Notables y Sectores Circulares" },
+    { id: "concept_map", label: "Multimateria: Mapa Conceptual / Ideas Clave" },
+    { id: "timeline", label: "Historia/Español: Línea del Tiempo / Secuencia" },
+    { id: "scientific_method", label: "Ciencias (Bio/Fís/Quím): Indagación Científica" },
+    { id: "cause_effect", label: "Geografía/FCE/Tecnología: Diagrama Causa - Efecto" },
+    { id: "comparative_table", label: "Multimateria: Cuadro Comparativo de Análisis" },
+    { id: "none", label: "Sin Diagrama (Más espacio para desarrollo)" }
   ],
 
   renderByType(diagramType, opts = {}) {
@@ -362,6 +496,11 @@ window.SVGDiagrams = {
       case "statistics": return this.statisticsChart();
       case "probability": return this.probabilityTree();
       case "codiseno_sectors": return this.circularSectors();
+      case "concept_map": return this.conceptMap(opts);
+      case "timeline": return this.timelineDiagram(opts);
+      case "scientific_method": return this.scientificMethodDiagram(opts);
+      case "cause_effect": return this.causeEffectDiagram(opts);
+      case "comparative_table": return this.comparativeTableDiagram(opts);
       default: return this.algebraicGeometry({ mode: "rectangulos" });
     }
   }

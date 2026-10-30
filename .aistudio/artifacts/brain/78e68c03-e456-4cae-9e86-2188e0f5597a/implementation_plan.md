@@ -14,7 +14,7 @@ El sistema guiará al docente a través de una **Barra Superior de 5 Etapas con 
   - Incluye por defecto tu proyecto completo: **`Matemáticas 3° · Secundaria (Fase 6) · Esc. Sec. Abelardo L. Rodríguez (38 Semanas)`** con todas sus secuencias, sesiones y hojas intactas.
   - Botón **`+ Nuevo Curso / Materia`** para crear planeaciones de cualquier otra asignatura o grado (ej. *Español 1° Sec.*, *Ciencias 2° Sec. - Física*, *Historia 3° Sec.*, *Primaria Fase 3/4/5*, etc.) y cambiar entre cursos con un clic.
 - **Barra de 5 Pasos en la Cabecera (Navegación Libre con Indicador de Estado):**
-  1. **`1. Programa Sintético (PDF)`** — Configuración de Fase/Grado/Materia, subida de PDF oficial o selección del catálogo precargado NEM, y extracción/selección de Contenidos y PDAs.
+  1. **`1. Datos y Programa Sintético`** — Registro/selección inicial de **Escuela, Clave CCT, Nombre del Docente, Materia/Disciplina, Fase, Grado, Grupos, Turno y Localidad**, seguido de la subida de PDF del Programa Sintético (o selección del catálogo NEM precargado) y extracción de Contenidos y PDAs.
   2. **`2. Programa Analítico`** — Primer Plano (Diagnóstico Socioeducativo de la escuela/comunidad) y Segundo Plano (Contextualización y dosificación de los contenidos en bloques semanales por trimestre).
   3. **`3. Codiseño`** — Tercer Plano (Incorporación o adaptación de contenidos/PDAs locales o regionales justificados por la realidad escolar, integrados al cronograma anual).
   4. **`4. Planes de Clase`** — Plano Didáctico (Generación con IA bajo demanda por bloque o trimestre y edición de secuencias didácticas con Inicio, Desarrollo, Cierre, Transversalidad y Evaluación Formativa).
@@ -24,11 +24,18 @@ El sistema guiará al docente a través de una **Barra Superior de 5 Etapas con 
 
 ## 3. Experiencia Detallada por Etapa y Conexión Contextual con IA
 
-### Etapa 1: Programa Sintético (Catálogo NEM + Subida de PDF con IA)
-- **Datos Institucionales y Curriculares:** Escuela, CCT, Docente, Turno, Grupos, Municipio/Estado, Fase (Fases 2 a 6), Grado, Campo Formativo y Disciplina/Materia.
-- **Doble Vía de Carga del Programa Sintético:**
-  1. **Catálogo Oficial NEM Precargado (Fases 2 a 6):** Selección inmediata de Contenidos y PDAs oficiales para las disciplinas de Secundaria (Fase 6: *Matemáticas, Español, Ciencias [Biología, Física, Química], Historia, Geografía, Formación Cívica y Ética, Inglés, Artes, Tecnología, Educación Física*) y Primaria (Fases 3, 4 y 5), además de acceso directo al `Programa_Sintetico_Fase_6.pdf` incluido en el proyecto.
-  2. **Subida de Archivo PDF (Drag & Drop):** El docente puede subir cualquier PDF de Programa Sintético o documento curricular. El servidor procesa el PDF con Gemini (`application/pdf` multimodal) para extraer automáticamente la tabla de **Contenidos y PDAs del grado y materia elegidos**.
+### Etapa 1: Datos de Identificación + Programa Sintético (Catálogo NEM + Subida de PDF con IA)
+- **Sección 1A — Ficha Inicial de Datos de la Escuela, Docente y Materia (Punto de Partida):**
+  - El flujo comienza capturando o seleccionando de plantillas guardadas los datos oficiales que encabezarán todos los formatos e informarán el contexto de la IA:
+    - **Nombre de la Escuela** (ej. *Esc. Sec. Gral. Abelardo L. Rodríguez* o cualquier nuevo plantel).
+    - **Clave de la Escuela (CCT)** (ej. *26DES0010E*).
+    - **Nombre del Docente** (ej. *Prof. José Rafael Leyva García*).
+    - **Nivel / Fase NEM** (*Fase 2 Preescolar, Fase 3 Primaria 1°-2°, Fase 4 Primaria 3°-4°, Fase 5 Primaria 5°-6°, Fase 6 Secundaria 1°-3°*).
+    - **Campo Formativo y Materia / Disciplina** (*Matemáticas, Español, Ciencias [Biología, Física, Química], Historia, Geografía, Formación Cívica y Ética, Inglés, Artes, Tecnología, Educación Física, Tutoría*, etc.).
+    - **Grado, Grupos, Turno, Ciclo Escolar y Municipio/Estado** (ej. *3° Grado, Grupos 3°G y 3°H, Matutino, Guaymas, Sonora*).
+- **Sección 1B — Doble Vía de Carga del Programa Sintético:**
+  1. **Catálogo Oficial NEM Precargado (Fases 2 a 6):** Al elegir la Fase, Grado y Materia en los datos iniciales, se cargan automáticamente los Contenidos y PDAs oficiales de esa asignatura (además del acceso directo al `Programa_Sintetico_Fase_6.pdf` incluido en el proyecto).
+  2. **Subida de Archivo PDF (Drag & Drop):** El docente puede subir cualquier PDF de Programa Sintético o documento curricular. El servidor procesa el PDF con Gemini (`application/pdf` multimodal) filtrando por la **Materia y Grado** seleccionados para extraer automáticamente la tabla de **Contenidos y PDAs**.
 - **Edición en Etapa 1:** El docente puede activar/desactivar, editar o agregar Contenidos y PDAs antes de pasar al Programa Analítico.
 
 ### Etapa 2: Programa Analítico (1° y 2° Plano con IA)

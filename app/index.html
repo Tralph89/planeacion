@@ -80,7 +80,7 @@
   </header>
 
   <!-- ESTRUCTURA PRINCIPAL -->
-  <div class="app-layout" id="appLayoutContainer">
+  <div class="app-layout sidebar-hidden" id="appLayoutContainer">
     <!-- BARRA LATERAL: SELECTOR DE BLOQUES Y SEMANAS -->
     <aside class="app-sidebar" id="appSidebar">
       <button
@@ -95,7 +95,18 @@
       </button>
 
       <div id="sidebarCollapsibleBody" class="sidebar-collapsible-body">
-        <div class="sidebar-section-title">Filtrar por Periodo</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div class="sidebar-section-title" style="margin-bottom:0;">Filtrar por Periodo</div>
+          <button
+            type="button"
+            class="btn btn-outline btn-sm"
+            style="padding:2px 8px;font-size:0.74rem;"
+            onclick="AppController.togglePlaneacionSidebar()"
+            title="Ocultar barra lateral"
+          >
+            ✕ Ocultar
+          </button>
+        </div>
         <div class="trimester-filter">
           <button class="trim-btn active" data-trim="1">Trim 1</button>
           <button class="trim-btn" data-trim="2">Trim 2</button>

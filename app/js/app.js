@@ -15,6 +15,7 @@ window.AppController = {
     selectedSessionIndex: "all", // 'all' o índice numérico 0, 1, 2...
     showTeacherAnswers: false,
     compactPrintMode: false,
+    showPlaneacionSidebar: false,
     editMode: false,
     lastSavedTime: null,
     activeCourseId: "matematicas_3_alr",
@@ -414,12 +415,13 @@ window.AppController = {
     }
     if (window.FirebaseDB.user) {
       this.showConfirmModal({
-        title: `Base de Datos Conectada (${window.FirebaseDB.user.email || "Google"})`,
-        message: "Tus materias y planeaciones se guardan automáticamente en la base de datos en la nube (Firestore). ¿Deseas sincronizar todas tus materias ahora o cerrar sesión?",
-        confirmText: "Sincronizar Ahora con BD",
+        title: `Cuenta Activa (${window.FirebaseDB.user.email || "Google"})`,
+        message:
+          "Tus materias y planeaciones se guardan y sincronizan automáticamente en la base de datos en la nube (Firestore) y están disponibles al iniciar sesión desde cualquier computadora. ¿Deseas cerrar tu sesión actual?",
+        confirmText: "Cerrar sesión",
         onConfirm: async () => {
-          await window.FirebaseDB.syncAllLocalCoursesToCloud();
-          this.showToast("Todas tus materias fueron guardadas en la Base de Datos en la nube.", "success");
+          await window.FirebaseDB.signOutUser();
+          this.renderMainView();
         }
       });
     } else {
@@ -843,6 +845,11 @@ window.AppController = {
     if (toggleBtn) {
       toggleBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
     }
+  },
+
+  togglePlaneacionSidebar() {
+    this.state.showPlaneacionSidebar = !this.state.showPlaneacionSidebar;
+    this.renderMainView();
   },
 
   renderSidebar() {
@@ -1342,9 +1349,11 @@ window.AppController = {
     const layoutEl = document.getElementById("appLayoutContainer");
     if (!container) return;
 
-    // Mostrar el menú lateral de Filtrar por Periodo únicamente en Planes de Clase
+    // En Planes de Clase la barra lateral inicia oculta y se muestra/oculta con el botón
     if (layoutEl) {
-      layoutEl.classList.toggle("sidebar-hidden", this.state.currentTab !== "planeacion");
+      const shouldHideSidebar =
+        this.state.currentTab !== "planeacion" || !this.state.showPlaneacionSidebar;
+      layoutEl.classList.toggle("sidebar-hidden", shouldHideSidebar);
     }
 
     const bloque = this.getCurrentBloque();
@@ -1485,7 +1494,7 @@ window.AppController = {
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <button class="btn btn-outline btn-sm" onclick="AppController.handleCloudAuthAction()">
-              ${window.FirebaseDB?.user ? "Sincronizar con Base de Datos Cloud" : "Conectar Base de Datos en la Nube"}
+              ${window.FirebaseDB?.user ? `Cuenta activa (${(window.FirebaseDB.user.email || "").split("@")[0]}) · Cerrar sesión` : "Iniciar sesión (Guardar en mi cuenta)"}
             </button>
             <button class="btn btn-danger-outline btn-sm" onclick="AppController.deleteActiveCourse()">
               Borrar esta Materia (${esc.asignatura})
@@ -2436,20 +2445,23 @@ window.AppController = {
     return `
       <div class="action-toolbar no-export">
         <div class="toolbar-group">
+          ${
+            mode === "planeacion"
+              ? `<button class="btn ${this.state.showPlaneacionSidebar ? "btn-primary" : "btn-outline"}" onclick="AppController.togglePlaneacionSidebar()">
+                  ${this.state.showPlaneacionSidebar ? "Ocultar Barra Lateral" : "☰ Mostrar Barra Lateral (Periodos / Bloques)"}
+                </button>`
+              : ""
+          }
           <div class="toolbar-block-indicator">
             <span class="toolbar-block-kicker">${kickerLabel}</span>
-            ${
-              mode === "hojas"
-                ? `<select class="form-control" style="padding:3px 8px;font-size:0.8rem;font-weight:700;max-width:290px;" onchange="AppController.selectBloque(this.value)">
-                    ${this.state.bloquesDB
-                      .map(
-                        (b) =>
-                          `<option value="${b.id}" ${b.id === bloque.id ? "selected" : ""}>${b.semanas} · ${(b.contenidoContextualizado || b.contenidoSintetico).slice(0, 42)}</option>`
-                      )
-                      .join("")}
-                  </select>`
-                : `<span class="toolbar-block-name" title="${bloque.contenidoContextualizado || bloque.contenidoSintetico}">${bloque.contenidoContextualizado || bloque.contenidoSintetico}</span>`
-            }
+            <select class="form-control" style="padding:3px 8px;font-size:0.8rem;font-weight:700;max-width:290px;" onchange="AppController.selectBloque(this.value)">
+              ${this.state.bloquesDB
+                .map(
+                  (b) =>
+                    `<option value="${b.id}" ${b.id === bloque.id ? "selected" : ""}>${b.semanas} · ${(b.contenidoContextualizado || b.contenidoSintetico).slice(0, 42)}</option>`
+                )
+                .join("")}
+            </select>
           </div>
           ${
             mode === "planeacion"

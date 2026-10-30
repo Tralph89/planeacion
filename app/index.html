@@ -14,75 +14,107 @@
 </head>
 <body>
   <!-- BARRA SUPERIOR INSTITUCIONAL CON SELECTOR DE CURSO, BORRAR MATERIA Y BASE DE DATOS -->
+    <!-- BARRA SUPERIOR INSTITUCIONAL EN DOS NIVELES -->
   <header class="app-topbar">
-    <div class="topbar-brand-cluster">
-      <div class="brand-wordmark" id="topbarWordmark">
-        Planeación NEM · Sec. Abelardo L. Rodríguez
+    <!-- NIVEL 1: BLOQUE SUPERIOR (MARCA, SELECTOR DE CURSO Y ACCIONES DE CUENTA/EXPORTACIÓN) -->
+    <div class="topbar-main-row">
+      <div class="topbar-brand-cluster">
+        <div class="brand-wordmark" id="topbarWordmark">
+          <svg class="brand-icon" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+            <path d="M224,48H32a8,8,0,0,0-8,8V192a8,8,0,0,0,8,8H88a40,40,0,0,1,32,16,8,8,0,0,0,16,0,40,40,0,0,1,32-16h56a8,8,0,0,0,8-8V56A8,8,0,0,0,224,48ZM88,184H40V64H88a24,24,0,0,1,24,24v96A39.81,39.81,0,0,0,88,184Zm128,0H168a39.81,39.81,0,0,0-24,0V88a24,24,0,0,1,24-24h48Z"/>
+          </svg>
+          <span class="brand-text">Planeación NEM · Sec. Abelardo L. Rodríguez</span>
+        </div>
+        <div class="course-switcher-wrap">
+          <div class="course-select-container">
+            <select
+              id="courseSelectDropdown"
+              class="course-select-dropdown"
+              aria-label="Seleccionar Curso o Materia Activa"
+              onchange="AppController.switchCourse(this.value)"
+            ></select>
+          </div>
+          <button
+            type="button"
+            class="btn-new-course"
+            onclick="AppController.createNewCourseInteractive()"
+            title="Crear planeación para una nueva materia o grado"
+            aria-label="Crear nueva materia"
+          >
+            <svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+              <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/>
+            </svg>
+            <span>Nueva Materia</span>
+          </button>
+          <button
+            type="button"
+            class="btn-delete-course"
+            onclick="AppController.deleteActiveCourse()"
+            title="Borrar la materia o curso seleccionado actualmente"
+            aria-label="Borrar materia actual"
+          >
+            <svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+              <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/>
+            </svg>
+            <span>Borrar</span>
+          </button>
+        </div>
       </div>
-      <div class="course-switcher-wrap">
-        <select
-          id="courseSelectDropdown"
-          class="course-select-dropdown"
-          aria-label="Seleccionar Curso o Materia Activa"
-          onchange="AppController.switchCourse(this.value)"
-        ></select>
+
+      <div class="topbar-action">
         <button
           type="button"
-          class="btn-new-course"
-          onclick="AppController.createNewCourseInteractive()"
-          title="Crear planeación para una nueva materia o grado"
+          id="cloudAuthButton"
+          class="btn-cloud-auth"
+          onclick="AppController.handleCloudAuthAction()"
+          title="Guardar en mi cuenta (Sincronización en la nube)"
+          aria-label="Guardar en mi cuenta (Sincronización en la nube)"
         >
-          + Nueva Materia
+          <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+            <path d="M248,128a56.06,56.06,0,0,1-56,56H72a72,72,0,0,1-7.14-143.64A88,88,0,0,1,235.39,114.7,55.77,55.77,0,0,1,248,128Zm-56,40a40,40,0,0,0,0-80c-2.48,0-5,.23-7.44.69a8,8,0,0,1-9.22-5.74A72,72,0,0,0,40,112a56,56,0,0,0,32,50.41,8,8,0,0,1,4.42,7.18V168Z"/>
+          </svg>
+          <span class="sr-only" id="cloudAuthLabel">Guardar en mi cuenta</span>
         </button>
         <button
           type="button"
-          class="btn-delete-course"
-          onclick="AppController.deleteActiveCourse()"
-          title="Borrar la materia o curso seleccionado actualmente"
+          class="btn-topbar-primary js-pdf-export-btn"
+          onclick="AppController.exportPDFSafely()"
+          title="Descargar documento actual en PDF"
+          aria-label="Descargar documento actual en PDF"
         >
-          Borrar Materia
+          <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+            <path d="M224,152v56a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V152a8,8,0,0,1,16,0v56H208V152a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,132.69V40a8,8,0,0,0-16,0v92.69L93.66,106.34a8,8,0,0,0-11.32,11.32Z"/>
+          </svg>
         </button>
       </div>
     </div>
 
-    <nav class="nav-tabs" aria-label="Flujo Pedagógico NEM en 5 Etapas">
-      <button class="nav-tab-btn" data-tab="sintetico">
-        <span class="step-num">1</span> Datos y Sintético (PDF)
-      </button>
-      <button class="nav-tab-btn" data-tab="analitico">
-        <span class="step-num">2</span> Programa Analítico
-      </button>
-      <button class="nav-tab-btn" data-tab="codiseno">
-        <span class="step-num">3</span> Codiseño
-      </button>
-      <button class="nav-tab-btn active" data-tab="planeacion">
-        <span class="step-num">4</span> Planes de Clase
-      </button>
-      <button class="nav-tab-btn" data-tab="hojas">
-        <span class="step-num">5</span> Hojas de Actividad
-      </button>
-    </nav>
-
-    <div class="topbar-action" style="gap:8px;">
-      <button
-        type="button"
-        id="cloudAuthButton"
-        class="btn-new-course"
-        onclick="AppController.handleCloudAuthAction()"
-        title="Inicia sesión con tu cuenta de Google para acceder a tus planeaciones desde cualquier computadora"
-      >
-        Iniciar sesión (Guardar en mi cuenta)
-      </button>
-      <button class="btn-topbar-primary js-pdf-export-btn" onclick="AppController.exportPDFSafely()">
-        Descargar PDF
-      </button>
+    <!-- NIVEL 2: BLOQUE INFERIOR (FLUJO PEDAGÓGICO NEM: SECCIONES 1 A LA 5) -->
+    <div class="topbar-nav-row">
+      <nav class="nav-tabs" role="tablist" aria-label="Flujo Pedagógico NEM en 5 Etapas">
+        <button class="nav-tab-btn" role="tab" aria-selected="false" data-tab="sintetico">
+          <span class="step-num">1</span> <span class="step-title">Datos y Sintético</span>
+        </button>
+        <button class="nav-tab-btn" role="tab" aria-selected="false" data-tab="analitico">
+          <span class="step-num">2</span> <span class="step-title">Programa Analítico</span>
+        </button>
+        <button class="nav-tab-btn" role="tab" aria-selected="false" data-tab="codiseno">
+          <span class="step-num">3</span> <span class="step-title">Codiseño</span>
+        </button>
+        <button class="nav-tab-btn active" role="tab" aria-selected="true" data-tab="planeacion">
+          <span class="step-num">4</span> <span class="step-title">Planes de Clase</span>
+        </button>
+        <button class="nav-tab-btn" role="tab" aria-selected="false" data-tab="hojas">
+          <span class="step-num">5</span> <span class="step-title">Hojas de Actividad</span>
+        </button>
+      </nav>
     </div>
   </header>
 
   <!-- ESTRUCTURA PRINCIPAL -->
   <div class="app-layout sidebar-hidden" id="appLayoutContainer">
     <!-- BARRA LATERAL: SELECTOR DE BLOQUES Y SEMANAS -->
-    <aside class="app-sidebar" id="appSidebar">
+    <aside class="app-sidebar" id="appSidebar" aria-label="Navegación de Periodos y Secuencias">
       <button
         type="button"
         id="mobileSidebarToggleBtn"
@@ -91,23 +123,29 @@
         aria-expanded="false"
       >
         <span id="mobileSidebarToggleLabel">Cambiar Bloque / Semana</span>
-        <span id="mobileSidebarChevron" class="mobile-sidebar-chevron">▾</span>
+        <span id="mobileSidebarChevron" class="mobile-sidebar-chevron">
+          <svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+            <path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80a8,8,0,0,1,11.32-11.32L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/>
+          </svg>
+        </span>
       </button>
 
       <div id="sidebarCollapsibleBody" class="sidebar-collapsible-body">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div class="sidebar-section-title" style="margin-bottom:0;">Filtrar por Periodo</div>
+        <div class="sidebar-filter-header">
+          <div class="sidebar-section-title">Filtrar por Periodo</div>
           <button
             type="button"
-            class="btn btn-outline btn-sm"
-            style="padding:2px 8px;font-size:0.74rem;"
+            class="btn btn-outline btn-sm btn-sidebar-hide"
             onclick="AppController.togglePlaneacionSidebar()"
             title="Ocultar barra lateral"
           >
-            ✕ Ocultar
+            <svg width="11" height="11" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+              <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/>
+            </svg>
+            <span>Ocultar</span>
           </button>
         </div>
-        <div class="trimester-filter">
+        <div class="trimester-filter" role="group" aria-label="Filtro por Trimestre">
           <button class="trim-btn active" data-trim="1">Trim 1</button>
           <button class="trim-btn" data-trim="2">Trim 2</button>
           <button class="trim-btn" data-trim="3">Trim 3</button>
@@ -117,18 +155,24 @@
           Ciclo Completo (Semanas + Codiseño)
         </button>
 
-        <input
-          type="text"
-          id="sidebarSearch"
-          class="search-box"
-          placeholder="Buscar por semana, tema o PDA..."
-        />
+        <div class="search-box-wrap">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+            <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/>
+          </svg>
+          <input
+            type="text"
+            id="sidebarSearch"
+            class="search-box"
+            placeholder="Buscar por semana, tema o PDA..."
+            aria-label="Buscar secuencias curriculares"
+          />
+        </div>
 
         <div class="sidebar-section-header">
-          <span class="sidebar-section-title" style="margin-bottom:0;">Secuencias Curriculares</span>
+          <span class="sidebar-section-title">Secuencias Curriculares</span>
           <span id="sidebarCountMeta" class="sidebar-count-meta"></span>
         </div>
-        <div id="bloqueListContainer" class="bloque-list"></div>
+        <div id="bloqueListContainer" class="bloque-list" role="list"></div>
       </div>
     </aside>
 
@@ -146,12 +190,19 @@
   />
 
   <!-- CONTENEDOR DE NOTIFICACIONES TOAST -->
-  <div id="toastContainer" class="toast-container no-export" aria-live="polite"></div>
+  <div id="toastContainer" class="toast-container no-export" aria-live="polite" aria-atomic="true"></div>
 
-  <!-- MODAL DE CONFIRMACIÓN INTEGRADO -->
-  <div id="confirmModalBackdrop" class="modal-backdrop no-export" style="display:none;" role="dialog" aria-modal="true">
+  <!-- MODAL DE CONFIRMACIÓN INTEGRADO ACCESIBLE -->
+  <div id="confirmModalBackdrop" class="modal-backdrop no-export" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalMessage">
     <div class="modal-card">
-      <h3 id="confirmModalTitle" class="modal-title">Confirmar acción</h3>
+      <div class="modal-header">
+        <h3 id="confirmModalTitle" class="modal-title">Confirmar acción</h3>
+        <button type="button" id="confirmModalCloseBtn" class="modal-close-btn" aria-label="Cerrar modal" onclick="document.getElementById('confirmModalBackdrop').style.display='none'">
+          <svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+            <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/>
+          </svg>
+        </button>
+      </div>
       <p id="confirmModalMessage" class="modal-message"></p>
       <div class="modal-actions">
         <button id="confirmModalCancelBtn" class="btn btn-outline">Cancelar</button>
@@ -161,8 +212,8 @@
   </div>
 
   <!-- MÓDULOS DE DATOS, BASE DE DATOS Y LÓGICA -->
-  <script src="/node_modules/html2canvas/dist/html2canvas.min.js"></script>
-  <script src="/node_modules/jspdf/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="js/svg_diagrams.js"></script>
   <script src="data/programa_analitico_data.js"></script>
   <script src="data/catalogo_sintetico_nem.js"></script>

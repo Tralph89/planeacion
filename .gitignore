@@ -1,3 +1,7 @@
+# Dependencias de Node
+node_modules/
+package-lock.json
+
 # Archivos temporales y respaldos
 *.zip
 *.tar.gz

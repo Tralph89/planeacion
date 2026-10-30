@@ -6,6 +6,22 @@
 // Conserva íntegro el proyecto base de Matemáticas 3° (Esc. Sec. Abelardo L. Rodríguez)
 // ============================================================================
 
+window.AppIcons = {
+  sidebar: '<svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM40,56H88V200H40ZM216,200H104V56H216V200Z"/></svg>',
+  pencil: '<svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z"/></svg>',
+  check: '<svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>',
+  eye: '<svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.35c18.83-18.82,27.3-37.6,27.65-38.39A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg>',
+  compact: '<svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM48,48H208V88H48ZM208,208H48V104H208V208Z"/></svg>',
+  word: '<svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM152,44l44,44H152ZM200,216H56V40h80V96a8,8,0,0,0,8,8h56V216Zm-36-80a8,8,0,0,1-8,8H100a8,8,0,0,1,0-16h56A8,8,0,0,1,164,136Zm0,32a8,8,0,0,1-8,8H100a8,8,0,0,1,0-16h56A8,8,0,0,1,164,168Z"/></svg>',
+  pdf: '<svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,152v56a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V152a8,8,0,0,1,16,0v56H208V152a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,132.69V40a8,8,0,0,0-16,0v92.69L93.66,106.34a8,8,0,0,0-11.32,11.32Z"/></svg>',
+  arrowRight: '<svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/></svg>',
+  arrowLeft: '<svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/></svg>',
+  plus: '<svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></svg>',
+  warning: '<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/></svg>',
+  success: '<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm45.66,85.66-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"/></svg>',
+  error: '<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm37.66,130.34a8,8,0,0,1-11.32,11.32L128,139.31l-26.34,26.35a8,8,0,0,1-11.32-11.32L116.69,128,90.34,101.66a8,8,0,0,1,11.32-11.32L128,116.69l26.34-26.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></svg>'
+};
+
 window.AppController = {
   state: {
     currentTab: "planeacion", // 'sintetico' | 'analitico' | 'codiseno' | 'planeacion' | 'hojas'
@@ -252,7 +268,8 @@ window.AppController = {
     const selectEl = document.getElementById("courseSelectDropdown");
     const wordmarkEl = document.getElementById("topbarWordmark");
     if (wordmarkEl && this.state.escuela) {
-      wordmarkEl.textContent = `${this.state.escuela.asignatura || "Materia"} · ${this.state.escuela.grado || ""} · ${this.state.escuela.nombre || "Escuela"}`;
+      const textEl = wordmarkEl.querySelector(".brand-text") || wordmarkEl;
+      textEl.textContent = `${this.state.escuela.asignatura || "Materia"} · ${this.state.escuela.grado || ""} · ${this.state.escuela.nombre || "Escuela"}`;
     }
     if (!selectEl) return;
 
@@ -378,6 +395,7 @@ window.AppController = {
       title: `Borrar Materia: ${nombreMateria}`,
       message: `¿Estás seguro de que deseas borrar la materia "${nombreMateria}" (${this.state.escuela?.nombre || ""})? Se eliminará del selector y de la base de datos.`,
       confirmText: "Sí, borrar materia",
+      isDanger: true,
       onConfirm: async () => {
         delete this.state.coursesDB[idToDelete];
 
@@ -408,9 +426,19 @@ window.AppController = {
     });
   },
 
-  handleCloudAuthAction() {
+  async handleCloudAuthAction() {
     if (!window.FirebaseDB) {
-      this.showToast("Inicializando conexión con Firebase...", "warning");
+      this.showToast("Cargando servicios de autenticación en la nube...", "info");
+      for (let i = 0; i < 25; i++) {
+        await new Promise((res) => setTimeout(res, 120));
+        if (window.FirebaseDB) break;
+      }
+    }
+    if (!window.FirebaseDB) {
+      this.showToast(
+        "No se pudo cargar el módulo de autenticación con Firebase. Verifica tu conexión a internet.",
+        "warning"
+      );
       return;
     }
     if (window.FirebaseDB.user) {
@@ -425,28 +453,35 @@ window.AppController = {
         }
       });
     } else {
-      window.FirebaseDB.signInWithGoogle();
+      await window.FirebaseDB.signInWithGoogle();
     }
   },
 
   updateCloudAuthUI(user) {
     const btn = document.getElementById("cloudAuthButton");
+    const label = document.getElementById("cloudAuthLabel");
     if (!btn) return;
     if (user) {
       const shortEmail = (user.email || "Conectado").split("@")[0];
-      btn.textContent = `Cuenta activa (${shortEmail})`;
-      btn.title = `Guardado automático en la nube activo para ${user.email}. Tus planeaciones están disponibles en cualquier computadora.`;
+      if (label) label.textContent = `Cuenta activa (${shortEmail})`;
+      btn.classList.add("active");
+      btn.title = `Cuenta activa: ${user.email} (Sincronización en la nube activa)`;
+      btn.setAttribute("aria-label", `Cuenta activa: ${user.email}`);
     } else {
-      btn.textContent = "Iniciar sesión (Guardar en mi cuenta)";
-      btn.title = "Inicia sesión con Google para guardar automáticamente tus planeaciones y abrirlas desde otra computadora";
+      if (label) label.textContent = "Guardar en mi cuenta";
+      btn.classList.remove("active");
+      btn.title = "Inicia sesión con Google para sincronizar tus planeaciones en la nube.";
+      btn.setAttribute("aria-label", "Iniciar sesión con Google para sincronizar");
     }
   },
 
   updateCloudSyncBadge(statusText) {
     const badge = document.getElementById("saveStatusBadge");
     if (badge) {
-      badge.textContent = `${statusText} · ${this.state.lastSavedTime || ""}`;
-      badge.style.display = "inline-block";
+      const isSaving = statusText.toLowerCase().includes("guardando");
+      const dotClass = isSaving ? "status-dot saving" : "status-dot cloud";
+      badge.innerHTML = `<span class="${dotClass}"></span> <span>${statusText} · ${this.state.lastSavedTime || ""}</span>`;
+      badge.style.display = "inline-flex";
     }
   },
 
@@ -455,33 +490,33 @@ window.AppController = {
     const container = document.getElementById("toastContainer");
     if (!container) return;
 
-    const prefixes = {
-      success: "Listo:",
-      warning: "Aviso:",
-      error: "Error:"
-    };
-    const prefix = prefixes[type] || "Info:";
-
+    const icon = window.AppIcons[type] || window.AppIcons.success;
     const toast = document.createElement("div");
     toast.className = `toast-item toast-${type}`;
     toast.innerHTML = `
-      <span><strong>${prefix}</strong> ${message}</span>
-      <button type="button" style="background:transparent;border:none;color:#ffffff;cursor:pointer;font-weight:700;font-size:0.9rem;" aria-label="Cerrar">×</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${icon}
+        <span>${message}</span>
+      </div>
+      <button type="button" class="modal-close-btn" style="color:#ffffff;padding:2px;" aria-label="Cerrar notificación">
+        <svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></svg>
+      </button>
     `;
     toast.querySelector("button").addEventListener("click", () => toast.remove());
     container.appendChild(toast);
 
     setTimeout(() => {
       if (toast.parentNode) toast.remove();
-    }, 3800);
+    }, 4000);
   },
 
-  showConfirmModal({ title, message, confirmText = "Confirmar", onConfirm }) {
+  showConfirmModal({ title, message, confirmText = "Confirmar", isDanger = false, onConfirm }) {
     const backdrop = document.getElementById("confirmModalBackdrop");
     const titleEl = document.getElementById("confirmModalTitle");
     const msgEl = document.getElementById("confirmModalMessage");
     const cancelBtn = document.getElementById("confirmModalCancelBtn");
     const acceptBtn = document.getElementById("confirmModalAcceptBtn");
+    const closeBtn = document.getElementById("confirmModalCloseBtn");
 
     if (!backdrop || !titleEl || !msgEl || !cancelBtn || !acceptBtn) {
       if (typeof onConfirm === "function") onConfirm();
@@ -491,19 +526,36 @@ window.AppController = {
     titleEl.textContent = title || "Confirmar acción";
     msgEl.textContent = message || "¿Deseas continuar con esta acción?";
     acceptBtn.textContent = confirmText;
+    acceptBtn.className = isDanger ? "btn btn-danger" : "btn btn-primary";
     backdrop.style.display = "flex";
+
+    const keyListener = (e) => {
+      if (e.key === "Escape") cleanup();
+    };
+    const backdropListener = (e) => {
+      if (e.target === backdrop) cleanup();
+    };
 
     const cleanup = () => {
       backdrop.style.display = "none";
       cancelBtn.onclick = null;
       acceptBtn.onclick = null;
+      if (closeBtn) closeBtn.onclick = null;
+      document.removeEventListener("keydown", keyListener);
+      backdrop.removeEventListener("click", backdropListener);
     };
 
     cancelBtn.onclick = () => cleanup();
+    if (closeBtn) closeBtn.onclick = () => cleanup();
+    document.addEventListener("keydown", keyListener);
+    backdrop.addEventListener("click", backdropListener);
+
     acceptBtn.onclick = () => {
       cleanup();
       if (typeof onConfirm === "function") onConfirm();
     };
+
+    setTimeout(() => acceptBtn.focus(), 40);
   },
 
   // ================= PERSISTENCIA Y ESTADO =================
@@ -531,8 +583,8 @@ window.AppController = {
     });
     const badge = document.getElementById("saveStatusBadge");
     if (badge) {
-      badge.textContent = `Guardado automático · ${this.state.lastSavedTime}`;
-      badge.style.display = "inline-block";
+      badge.innerHTML = `<span class="status-dot"></span> <span>Guardado · ${this.state.lastSavedTime}</span>`;
+      badge.style.display = "inline-flex";
     }
     this.renderCourseSelector();
 
@@ -571,8 +623,12 @@ window.AppController = {
         if (this.state.editMode) {
           this.flushAllEditableFields();
         }
-        document.querySelectorAll(".nav-tab-btn").forEach((el) => el.classList.remove("active"));
+        document.querySelectorAll(".nav-tab-btn").forEach((el) => {
+          el.classList.remove("active");
+          el.setAttribute("aria-selected", "false");
+        });
         btn.classList.add("active");
+        btn.setAttribute("aria-selected", "true");
         this.state.currentTab = btn.dataset.tab;
         this.renderMainView();
       });
@@ -2443,56 +2499,69 @@ window.AppController = {
       : "+ Agregar Sesión al Bloque";
 
     return `
-      <div class="action-toolbar no-export">
+      <div class="action-toolbar no-export" role="toolbar" aria-label="Acciones de planeación y exportación">
         <div class="toolbar-group">
           ${
             mode === "planeacion"
-              ? `<button class="btn ${this.state.showPlaneacionSidebar ? "btn-primary" : "btn-outline"}" onclick="AppController.togglePlaneacionSidebar()">
-                  ${this.state.showPlaneacionSidebar ? "Ocultar Barra Lateral" : "☰ Mostrar Barra Lateral (Periodos / Bloques)"}
+              ? `<button class="btn ${this.state.showPlaneacionSidebar ? "btn-primary" : "btn-outline"}" onclick="AppController.togglePlaneacionSidebar()" title="Mostrar u ocultar selector de periodos y semanas" aria-label="Alternar barra lateral">
+                  ${window.AppIcons.sidebar}
+                  <span>${this.state.showPlaneacionSidebar ? "Ocultar Periodos" : "Mostrar Periodos"}</span>
                 </button>`
               : ""
           }
           <div class="toolbar-block-indicator">
             <span class="toolbar-block-kicker">${kickerLabel}</span>
-            <select class="form-control" style="padding:3px 8px;font-size:0.8rem;font-weight:700;max-width:290px;" onchange="AppController.selectBloque(this.value)">
+            <select class="form-control" style="padding:4px 8px;font-size:0.8rem;font-weight:700;max-width:280px;" onchange="AppController.selectBloque(this.value)" aria-label="Seleccionar bloque o semana curricular">
               ${this.state.bloquesDB
                 .map(
                   (b) =>
-                    `<option value="${b.id}" ${b.id === bloque.id ? "selected" : ""}>${b.semanas} · ${(b.contenidoContextualizado || b.contenidoSintetico).slice(0, 42)}</option>`
+                    `<option value="${b.id}" ${b.id === bloque.id ? "selected" : ""}>${b.semanas} · ${(b.contenidoContextualizado || b.contenidoSintetico).slice(0, 40)}</option>`
                 )
                 .join("")}
             </select>
           </div>
           ${
             mode === "planeacion"
-              ? `<button class="btn btn-outline" onclick="AppController.switchSubView('hojas')">${nextStepBtnLabel}</button>`
-              : `<button class="btn btn-outline" onclick="AppController.switchSubView('planeacion')">${backStepBtnLabel}</button>`
+              ? `<button class="btn btn-outline" onclick="AppController.switchSubView('hojas')" title="Ir a la siguiente etapa pedagógica">
+                  <span>${nextStepBtnLabel}</span>
+                  ${window.AppIcons.arrowRight}
+                </button>`
+              : `<button class="btn btn-outline" onclick="AppController.switchSubView('planeacion')" title="Volver a planes de clase">
+                  ${window.AppIcons.arrowLeft}
+                  <span>${backStepBtnLabel}</span>
+                </button>`
           }
-          <button class="btn ${this.state.editMode ? "btn-save-edit" : "btn-outline"}" onclick="AppController.toggleEditMode()">
-            ${this.state.editMode ? "Guardar y Salir de Edición" : "Editar Contenido"}
+          <button class="btn ${this.state.editMode ? "btn-save-edit" : "btn-outline"}" onclick="AppController.toggleEditMode()" title="Editar o guardar contenidos de este bloque">
+            ${this.state.editMode ? window.AppIcons.check : window.AppIcons.pencil}
+            <span>${this.state.editMode ? "Guardar Cambios" : "Editar Contenido"}</span>
           </button>
           ${
             mode === "hojas"
               ? `
-            <button class="btn btn-outline ${this.state.showTeacherAnswers ? "active-toggle" : ""}" onclick="AppController.toggleTeacherAnswers()">
-              ${this.state.showTeacherAnswers ? "Ocultar Respuestas (Modo Alumno)" : "Ver Guía Docente (Respuestas)"}
+            <button class="btn btn-outline ${this.state.showTeacherAnswers ? "active-toggle" : ""}" onclick="AppController.toggleTeacherAnswers()" title="Alternar entre guía de respuestas para el profesor o vista para el alumno">
+              ${window.AppIcons.eye}
+              <span>${this.state.showTeacherAnswers ? "Modo Alumno" : "Guía Docente"}</span>
             </button>
-            <button class="btn btn-outline ${this.state.compactPrintMode ? "active-toggle" : ""}" onclick="AppController.toggleCompactMode()">
-              ${this.state.compactPrintMode ? "Vista Compacta 1 Pág. (Activa)" : "Ajustar a 1 Página (Compacto)"}
+            <button class="btn btn-outline ${this.state.compactPrintMode ? "active-toggle" : ""}" onclick="AppController.toggleCompactMode()" title="Ajustar ficha a 1 página compacta para impresión">
+              ${window.AppIcons.compact}
+              <span>${this.state.compactPrintMode ? "1 Pág. Activa" : "Ajustar a 1 Pág."}</span>
             </button>
           `
               : ""
           }
-          <span id="saveStatusBadge" class="save-status-text" style="display:${this.state.lastSavedTime ? "inline-block" : "none"};">
-            Guardado automático · ${this.state.lastSavedTime || ""}
+          <span id="saveStatusBadge" class="save-status-text" style="display:${this.state.lastSavedTime ? "inline-flex" : "none"};">
+            <span class="status-dot"></span>
+            <span>Guardado · ${this.state.lastSavedTime || ""}</span>
           </span>
         </div>
         <div class="toolbar-group">
-          <button class="btn btn-word" onclick="AppController.exportWordSafely('${docTargetId}', '${filePrefix}')">
-            Descargar Word (.doc)
+          <button class="btn btn-word" onclick="AppController.exportWordSafely('${docTargetId}', '${filePrefix}')" title="Descargar en formato editable de Microsoft Word">
+            ${window.AppIcons.word}
+            <span>Descargar Word</span>
           </button>
-          <button class="btn btn-pdf js-pdf-export-btn" onclick="AppController.exportPDFSafely('${docTargetId}', '${filePrefix}')">
-            Descargar PDF (.pdf)
+          <button class="btn btn-pdf js-pdf-export-btn" onclick="AppController.exportPDFSafely('${docTargetId}', '${filePrefix}')" title="Descargar en documento listo para imprimir en PDF">
+            ${window.AppIcons.pdf}
+            <span>Descargar PDF</span>
           </button>
         </div>
       </div>
@@ -2552,7 +2621,9 @@ window.AppController = {
     }
     this.state.currentTab = tabName;
     document.querySelectorAll(".nav-tab-btn").forEach((el) => {
-      el.classList.toggle("active", el.dataset.tab === tabName);
+      const isActive = el.dataset.tab === tabName;
+      el.classList.toggle("active", isActive);
+      el.setAttribute("aria-selected", isActive ? "true" : "false");
     });
     this.renderMainView();
   },

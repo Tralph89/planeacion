@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const HOST = "0.0.0.0";
 
 // Allow up to 25MB JSON payloads for base64 PDF uploads
@@ -901,6 +901,20 @@ app.get("/", (req, res) => {
   res.redirect("/app/index.html");
 });
 
-app.listen(PORT, HOST, () => {
-  console.log(`Server running at http://${HOST}:${PORT}`);
-});
+const startServer = (port) => {
+  const server = app.listen(port, HOST, () => {
+    console.log(`Server running at http://${HOST}:${port}`);
+    console.log(`Open in browser: http://localhost:${port}/app/index.html`);
+  });
+
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.warn(`Port ${port} is currently in use, trying port ${port + 1}...`);
+      startServer(port + 1);
+    } else {
+      console.error("Server error:", err);
+    }
+  });
+};
+
+startServer(PORT);

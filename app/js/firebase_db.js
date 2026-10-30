@@ -10,7 +10,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  getRedirectResult
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import {
   getFirestore,
@@ -26,6 +27,16 @@ import {
   getDocs,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+const DEFAULT_FIREBASE_CONFIG = {
+  projectId: "solar-tower-jcxst",
+  appId: "1:240524814082:web:4c972184221661c63f841b",
+  apiKey: "AIzaSyBN_0YYJbBBZtBJhxBcvJgwUzYn2QRQibc",
+  authDomain: "solar-tower-jcxst.firebaseapp.com",
+  firestoreDatabaseId: "ai-studio-planeacion-78e68c03-e456-4cae-9e86-2188e0f5597a",
+  storageBucket: "solar-tower-jcxst.firebasestorage.app",
+  messagingSenderId: "240524814082"
+};
 
 const OperationType = {
   CREATE: "create",
@@ -80,7 +91,7 @@ async function testConnection() {
     await getDocFromServer(doc(db, "test", "connection"));
   } catch (error) {
     if (error instanceof Error && error.message.includes("the client is offline")) {
-      console.error("Please check your Firebase configuration.");
+      console.warn("Aviso: el cliente de base de datos se encuentra en modo local/desconectado.");
     }
   }
 }
@@ -88,50 +99,167 @@ async function testConnection() {
 window.FirebaseDB = {
   isReady: false,
   user: null,
+  _initPromise: null,
 
   async init() {
+    if (this._initPromise) return this._initPromise;
+    this._initPromise = this._doInit();
+    return this._initPromise;
+  },
+
+  async _doInit() {
     try {
-      const res = await fetch("/firebase-applet-config.json");
-      if (!res.ok) return;
-      const firebaseConfig = await res.json();
+      let firebaseConfig = null;
+      try {
+        const res = await fetch("/firebase-applet-config.json");
+        if (res.ok) {
+          firebaseConfig = await res.json();
+        }
+      } catch (fetchErr) {
+        console.warn("No se pudo cargar /firebase-applet-config.json, usando configuración integrada:", fetchErr);
+      }
+
+      if (!firebaseConfig) {
+        firebaseConfig = DEFAULT_FIREBASE_CONFIG;
+      }
 
       const app = initializeApp(firebaseConfig);
-      db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-      auth = getAuth(app);
+
+      // Inicializar Autenticación primero
+      try {
+        auth = getAuth(app);
+      } catch (authInitErr) {
+        console.error("Error al inicializar Firebase Auth:", authInitErr);
+      }
+
+      // Inicializar Firestore con fallback
+      try {
+        if (firebaseConfig.firestoreDatabaseId) {
+          db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+        } else {
+          db = getFirestore(app);
+        }
+      } catch (dbErr) {
+        console.warn("Aviso con base de datos nombrada, usando base de datos por defecto:", dbErr);
+        try {
+          db = getFirestore(app);
+        } catch (dbErr2) {
+          console.error("Error al inicializar Firestore:", dbErr2);
+        }
+      }
+
       this.isReady = true;
 
-      await testConnection();
+      // Registrar observador de autenticación de forma inmediata
+      if (auth) {
+        onAuthStateChanged(auth, async (user) => {
+          currentUser = user;
+          this.user = user;
+          if (window.AppController) {
+            window.AppController.updateCloudAuthUI(user);
+          }
+          if (user) {
+            await this.loadAndSyncCoursesFromCloud();
+          }
+        });
 
-      onAuthStateChanged(auth, async (user) => {
-        currentUser = user;
-        this.user = user;
-        if (window.AppController) {
-          window.AppController.updateCloudAuthUI(user);
-        }
-        if (user) {
-          await this.loadAndSyncCoursesFromCloud();
-        }
+        // Soporte para retorno de redirección OAuth si aplica
+        getRedirectResult(auth)
+          .then(async (result) => {
+            if (result && result.user) {
+              currentUser = result.user;
+              this.user = result.user;
+              if (window.AppController) {
+                window.AppController.updateCloudAuthUI(result.user);
+                window.AppController.showToast(
+                  `Sesión iniciada como ${result.user.email || "Google"}. Sincronizando materias...`,
+                  "success"
+                );
+              }
+              await this.loadAndSyncCoursesFromCloud();
+            }
+          })
+          .catch((redirectErr) => {
+            if (redirectErr?.code && redirectErr.code !== "auth/popup-closed-by-user") {
+              console.warn("Aviso en getRedirectResult:", redirectErr);
+            }
+          });
+      }
+
+      // Comprobación de salud en segundo plano (sin bloquear init)
+      testConnection().catch((testErr) => {
+        console.warn("Aviso de conectividad en Firestore:", testErr?.message || testErr);
       });
+
+      return true;
     } catch (err) {
       console.warn("Inicialización de Firebase omitida o en modo local:", err);
+      return false;
     }
   },
 
   async signInWithGoogle() {
-    if (!auth) return;
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+    if (!auth) {
+      console.log("Firebase Auth no inicializado, ejecutando init()...");
+      await this.init();
+    }
+    if (!auth) {
+      console.error("Firebase Auth no se pudo inicializar.");
       if (window.AppController) {
         window.AppController.showToast(
-          "Sesión iniciada con Google. Sincronizando tus materias con la base de datos en la nube...",
+          "No se pudo conectar con el servicio de autenticación de Google. Revisa tu conexión a internet.",
+          "danger"
+        );
+      }
+      return;
+    }
+
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      const result = await signInWithPopup(auth, provider);
+      currentUser = result.user;
+      this.user = result.user;
+      if (window.AppController) {
+        window.AppController.updateCloudAuthUI(result.user);
+        window.AppController.showToast(
+          `Sesión iniciada con Google (${result.user.email || "Docente"}). Sincronizando materias con la nube...`,
           "success"
         );
       }
+      await this.loadAndSyncCoursesFromCloud();
     } catch (err) {
-      if (window.AppController) {
+      console.error("Error al iniciar sesión con Google:", err);
+      if (!window.AppController) return;
+
+      if (err.code === "auth/popup-blocked") {
         window.AppController.showToast(
-          "No se completó el inicio de sesión con Google. Tus datos siguen guardados localmente.",
+          "El navegador bloqueó la ventana emergente de Google. Habilita las ventanas emergentes (pop-ups) en tu navegador para continuar.",
+          "warning"
+        );
+      } else if (err.code === "auth/popup-closed-by-user") {
+        window.AppController.showToast(
+          "Ventana de autenticación cerrada sin completar el inicio de sesión.",
+          "info"
+        );
+      } else if (err.code === "auth/unauthorized-domain") {
+        window.AppController.showToast(
+          `El dominio actual (${window.location.hostname}) no está autorizado en la consola de Firebase Authentication.`,
+          "danger"
+        );
+      } else if (err.code === "auth/operation-not-allowed") {
+        window.AppController.showToast(
+          "El proveedor de acceso con Google no está habilitado en Firebase Authentication.",
+          "danger"
+        );
+      } else if (err.code === "auth/network-request-failed") {
+        window.AppController.showToast(
+          "Error de conexión con los servidores de Google. Revisa tu conexión de red.",
+          "danger"
+        );
+      } else {
+        window.AppController.showToast(
+          `No se completó el inicio de sesión con Google: ${err.message || "Error"}. Tus datos siguen guardados localmente.`,
           "warning"
         );
       }
@@ -141,6 +269,8 @@ window.FirebaseDB = {
   async signOutUser() {
     if (!auth) return;
     await signOut(auth);
+    currentUser = null;
+    this.user = null;
     if (window.AppController) {
       window.AppController.updateCloudAuthUI(null);
       window.AppController.showToast("Sesión en la nube cerrada.", "success");
@@ -274,6 +404,11 @@ window.FirebaseDB = {
   }
 };
 
-document.addEventListener("DOMContentLoaded", () => {
+// Auto-inicializar si el DOM ya está listo, o escuchar cuando se complete
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    window.FirebaseDB.init();
+  });
+} else {
   window.FirebaseDB.init();
-});
+}

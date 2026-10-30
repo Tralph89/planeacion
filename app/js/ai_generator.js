@@ -1,13 +1,14 @@
 // ============================================================================
 // GENERADOR INTELIGENTE DE SESIONES Y VARIANTES CONTEXTUALIZADAS (NEM)
-// Funciona 100% offline con motor de plantillas de Guaymas y online con Gemini API
+// Conecta con el servidor (/api/generate-session vía @google/genai) y cuenta
+// con motor pedagógico local instantáneo para Guaymas, Sonora.
 // ============================================================================
 
 window.AIGenerator = {
   contextosGuaymas: {
     pesca: {
       nombre: "Sector Pesquero y Marítimo de Guaymas",
-      escenario: "las embarcaciones camaroneras y sardineras del Puerto de Guaymas, Sonora",
+      escenario: "las embarcaciones camaroneras, sardineras y muelles del Puerto de Guaymas, Sonora",
       unidades: "toneladas de captura, millas náuticas y cajas de congelación"
     },
     malecon: {
@@ -27,7 +28,7 @@ window.AIGenerator = {
     }
   },
 
-  // Genera una nueva sesión + Hoja de Actividad contextualizada sin requerir internet
+  // Genera una nueva sesión + Hoja de Actividad contextualizada con el motor pedagógico local
   generateContextualSession(bloqueInfo, contextoKey, customPrompt = "", nextSessionNumber = 6) {
     const ctx = this.contextosGuaymas[contextoKey] || this.contextosGuaymas.pesca;
     const tema = customPrompt.trim() || bloqueInfo.contenidoContextualizado;
@@ -47,7 +48,7 @@ window.AIGenerator = {
         ejercicios: [
           {
             enunciado: `1. Planteamiento en ${ctx.nombre}: En un proyecto sobre ${ctx.escenario} (${tema}), se registraron valores iniciales de 12 y 18 unidades. Modela la relación matemática y calcula el resultado al duplicar la capacidad operativa.`,
-            respuesta: `Al modelar con los datos iniciales (12 y 18) y duplicar la escala operativa, se obtiene 24 y 36 (o razón constante k = 1.5).`
+            respuesta: `Al modelar con los datos iniciales (12 y 18) y duplicar la escala operativa, se obtiene 24 y 36 (manteniendo razón constante k = 1.5).`
           },
           {
             enunciado: `2. Resolución Aplicada: Un equipo de trabajo en Guaymas necesita optimizar ${ctx.unidades} cumpliendo la condición del tema "${bloqueInfo.contenidoSintetico}". Si el total disponible es de 240 unidades repartidas en razón 3 : 5, ¿cuánto corresponde a cada parte?`,
@@ -63,58 +64,24 @@ window.AIGenerator = {
     };
   },
 
-  // Generación avanzada mediante API de Gemini (opcional si el docente ingresa su API Key)
-  async generateWithGeminiAPI(apiKey, bloqueInfo, contextoKey, customPrompt, nextSessionNumber) {
+  // Generación avanzada mediante el endpoint del servidor (/api/generate-session)
+  async generateWithServerAI(bloqueInfo, contextoKey, customPrompt, nextSessionNumber) {
     const ctx = this.contextosGuaymas[contextoKey] || this.contextosGuaymas.pesca;
-    const prompt = `
-Eres un profesor experto de Matemáticas de 3° de Secundaria en México bajo el modelo de la Nueva Escuela Mexicana (NEM), en la Escuela Secundaria General Abelardo L. Rodríguez de Guaymas, Sonora (Grupos 3°G y 3°H, turno vespertino).
-Genera UNA sesión didáctica completa (Inicio 10 min, Desarrollo 30 min, Cierre 10 min) y su respectiva Hoja de Actividad para el aula con respuestas exactas.
-
-Datos curriculares:
-- Contenido: ${bloqueInfo.contenidoSintetico}
-- Contextualización: ${bloqueInfo.contenidoContextualizado}
-- PDA: ${bloqueInfo.pda}
-- Contexto local de Guaymas a utilizar: ${ctx.nombre} (${ctx.escenario})
-- Instrucción específica del docente: ${customPrompt || "Generar ejercicios claros, progresivos y retadores."}
-
-Responde ÚNICAMENTE con un objeto JSON válido con esta estructura exacta (sin bloques markdown):
-{
-  "numero": ${nextSessionNumber},
-  "semana": "${bloqueInfo.semanas}",
-  "titulo": "Título atractivo de la sesión",
-  "inicio": "Descripción de la actividad de inicio (10 min) en primera persona...",
-  "desarrollo": "Descripción detallada del desarrollo (30 min) en primera persona...",
-  "cierre": "Descripción del cierre (10 min) y boleto de salida...",
-  "hojaActividad": {
-    "tituloHoja": "Título de la Hoja de Trabajo para el alumno",
-    "instrucciones": "Instrucciones claras para el alumno",
-    "notaTeorica": "Fórmula o recordatorio clave breve",
-    "diagramType": "${bloqueInfo.diagramType || "algebra_rect"}",
-    "ejercicios": [
-      { "enunciado": "1. Problema o serie de ejercicios nivel 1...", "respuesta": "Respuesta detallada..." },
-      { "enunciado": "2. Problema contextualizado en Guaymas nivel 2...", "respuesta": "Respuesta detallada..." },
-      { "enunciado": "3. Reto final de pensamiento crítico...", "respuesta": "Respuesta detallada..." }
-    ],
-    "boletoSalida": "Pregunta o ejercicio rápido de boleto de salida"
-  }
-}`;
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const response = await fetch(url, {
+    const response = await fetch("/api/generate-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json", temperature: 0.7 }
+        bloqueInfo,
+        contexto: ctx,
+        customPrompt,
+        nextSessionNumber
       })
     });
 
-    if (!response.ok) {
-      throw new Error(`Error de API (${response.status}): Verifica tu API Key de Gemini.`);
-    }
     const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const cleaned = rawText.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleaned);
+    if (!response.ok || !data.session) {
+      throw new Error(data.error || `Error del servidor (${response.status})`);
+    }
+    return data.session;
   }
 };

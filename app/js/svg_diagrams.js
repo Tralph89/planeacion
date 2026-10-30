@@ -327,10 +327,29 @@ window.SVGDiagrams = {
       </svg>`;
   },
 
+  catalog: [
+    { id: "compound_lt", label: "Figuras Compuestas (L y Fachada en T)" },
+    { id: "algebra_rect", label: "Álgebra Geométrica (Rectángulos y Áreas)" },
+    { id: "algebra_prisma", label: "Volúmenes Algebraicos (Cubo y Prismas)" },
+    { id: "open_box", label: "Ecuación Cuadrática (Caja sin Tapa)" },
+    { id: "cartesian", label: "Plano Cartesiano (Variación Lineal)" },
+    { id: "cartesian_parabola", label: "Plano Cartesiano (Parábola Cuadrática)" },
+    { id: "cartesian_inversa", label: "Plano Cartesiano (Proporcionalidad Inversa)" },
+    { id: "similar_triangles", label: "Semejanza de Triángulos y Teorema de Tales" },
+    { id: "solids_3d", label: "Cuerpos Redondos (Cilindro, Cono y Esfera)" },
+    { id: "pythagoras", label: "Teorema de Pitágoras (Triángulo Rectángulo)" },
+    { id: "trigonometry", label: "Razones Trigonométricas (Sen, Cos, Tan)" },
+    { id: "statistics", label: "Estadística (Histograma y Polígono)" },
+    { id: "probability", label: "Probabilidad (Diagrama de Árbol)" },
+    { id: "codiseno_sectors", label: "Productos Notables y Sectores Circulares" },
+    { id: "none", label: "Sin Diagrama (Más espacio para operaciones)" }
+  ],
+
   renderByType(diagramType, opts = {}) {
     switch (diagramType) {
+      case "none": return "";
       case "cartesian": return this.cartesianPlane(opts);
-      case "cartesian_parabola": return this.cartesianPlane({ ...opts, curveType: "parabola", title: opts.title || " Variación Cuadrática y Parábola" });
+      case "cartesian_parabola": return this.cartesianPlane({ ...opts, curveType: "parabola", title: opts.title || "Variación Cuadrática y Parábola" });
       case "cartesian_inversa": return this.cartesianPlane({ ...opts, curveType: "inversa", title: opts.title || "Variación Proporcional Inversa (y = k/x)" });
       case "compound_lt": return this.compoundFiguresLT();
       case "algebra_rect": return this.algebraicGeometry({ mode: "rectangulos" });

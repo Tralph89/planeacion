@@ -4,58 +4,108 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Planeación Didáctica y Hojas de Actividad | Matemáticas 3° NEM</title>
+  <meta name="description" content="Sistema de Planeación Didáctica, Programa Analítico y Hojas de Actividad para Matemáticas 3° de Secundaria (Nueva Escuela Mexicana - Fase 6)." />
+  <meta property="og:title" content="Sistema de Planeación Didáctica y Hojas de Actividad | Matemáticas 3° NEM" />
+  <meta property="og:description" content="Sistema de Planeación Didáctica, Programa Analítico y Hojas de Actividad para Matemáticas 3° de Secundaria (Nueva Escuela Mexicana - Fase 6)." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..600&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <!-- BARRA SUPERIOR INSTITUCIONAL -->
+  <!-- BARRA SUPERIOR INSTITUCIONAL (3-ZONE TOP BAR CONTRACT) -->
   <header class="app-topbar">
-    <div class="brand-block">
-      <div class="brand-badge">NEM · FASE 6</div>
-      <div class="brand-titles">
-        <h1>Planeación Didáctica y Hojas de Actividad · Matemáticas 3°</h1>
-        <p>Esc. Sec. Gral. Abelardo L. Rodríguez (26DES0010E) · Prof. José Rafael Leyva García · Guaymas, Sonora</p>
-      </div>
+    <div class="brand-wordmark">
+      Matemáticas 3° NEM · Sec. Abelardo L. Rodríguez
     </div>
 
-    <nav class="nav-tabs">
-      <button class="nav-tab-btn active" data-tab="planeacion">📋 Plan de Clase (NEM)</button>
-      <button class="nav-tab-btn" data-tab="hojas">📝 Hojas de Actividad (Por Sesión)</button>
-      <button class="nav-tab-btn" data-tab="analitico">🗺️ Programa Analítico (38 Semanas)</button>
-      <button class="nav-tab-btn" data-tab="generador">✨ Generador IA / Ajustes</button>
+    <nav class="nav-tabs" aria-label="Navegación principal">
+      <button class="nav-tab-btn active" data-tab="planeacion">Plan de Clase</button>
+      <button class="nav-tab-btn" data-tab="hojas">Hojas de Actividad</button>
+      <button class="nav-tab-btn" data-tab="analitico">Programa Analítico</button>
+      <button class="nav-tab-btn" data-tab="generador">Generador IA y Ajustes</button>
     </nav>
+
+    <div class="topbar-action">
+      <button class="btn-topbar-primary js-pdf-export-btn" onclick="AppController.exportPDFSafely()">
+        Descargar PDF
+      </button>
+    </div>
   </header>
 
   <!-- ESTRUCTURA PRINCIPAL -->
   <div class="app-layout">
     <!-- BARRA LATERAL: SELECTOR DE BLOQUES Y SEMANAS -->
-    <aside class="app-sidebar">
-      <div class="sidebar-section-title">Filtrar por Periodo / Trimestre</div>
-      <div class="trimester-filter">
-        <button class="trim-btn active" data-trim="1">Trim 1</button>
-        <button class="trim-btn" data-trim="2">Trim 2</button>
-        <button class="trim-btn" data-trim="3">Trim 3</button>
-        <button class="trim-btn" data-trim="4">Codiseño</button>
-      </div>
-      <button class="trim-btn" data-trim="0" style="width:100%;margin-bottom:10px;">
-        Ver Todo el Ciclo Escolar (Semanas 1 a 38 + Codiseño)
+    <aside class="app-sidebar" id="appSidebar">
+      <button
+        type="button"
+        id="mobileSidebarToggleBtn"
+        class="mobile-sidebar-toggle"
+        onclick="AppController.toggleMobileSidebar()"
+        aria-expanded="false"
+      >
+        <span id="mobileSidebarToggleLabel">Cambiar Bloque / Semana</span>
+        <span id="mobileSidebarChevron" class="mobile-sidebar-chevron">▾</span>
       </button>
 
-      <input
-        type="text"
-        id="sidebarSearch"
-        class="search-box"
-        placeholder="🔍 Buscar por semana, tema o PDA..."
-      />
+      <div id="sidebarCollapsibleBody" class="sidebar-collapsible-body">
+        <div class="sidebar-section-title">Filtrar por Periodo</div>
+        <div class="trimester-filter">
+          <button class="trim-btn active" data-trim="1">Trim 1</button>
+          <button class="trim-btn" data-trim="2">Trim 2</button>
+          <button class="trim-btn" data-trim="3">Trim 3</button>
+          <button class="trim-btn" data-trim="4">Codiseño</button>
+        </div>
+        <button class="trim-btn trim-btn-full" data-trim="0">
+          Ciclo Completo (38 Semanas + Codiseño)
+        </button>
 
-      <div class="sidebar-section-title">Secuencias del Programa Analítico</div>
-      <div id="bloqueListContainer" class="bloque-list"></div>
+        <input
+          type="text"
+          id="sidebarSearch"
+          class="search-box"
+          placeholder="Buscar por semana, tema o PDA..."
+        />
+
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-title" style="margin-bottom:0;">Secuencias Curriculares</span>
+          <span id="sidebarCountMeta" class="sidebar-count-meta"></span>
+        </div>
+        <div id="bloqueListContainer" class="bloque-list"></div>
+      </div>
     </aside>
 
     <!-- ÁREA DE TRABAJO Y VISTA PREVIA DE DOCUMENTOS -->
     <main id="mainContentContainer" class="app-main"></main>
   </div>
 
+  <!-- INPUT OCULTO PARA IMPORTAR RESPALDO JSON -->
+  <input
+    type="file"
+    id="backupJsonInput"
+    accept=".json,application/json"
+    style="display:none;"
+    onchange="AppController.handleImportBackupFile(event)"
+  />
+
+  <!-- CONTENEDOR DE NOTIFICACIONES TOAST -->
+  <div id="toastContainer" class="toast-container no-export" aria-live="polite"></div>
+
+  <!-- MODAL DE CONFIRMACIÓN INTEGRADO -->
+  <div id="confirmModalBackdrop" class="modal-backdrop no-export" style="display:none;" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <h3 id="confirmModalTitle" class="modal-title">Confirmar acción</h3>
+      <p id="confirmModalMessage" class="modal-message"></p>
+      <div class="modal-actions">
+        <button id="confirmModalCancelBtn" class="btn btn-outline">Cancelar</button>
+        <button id="confirmModalAcceptBtn" class="btn btn-primary">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MÓDULOS DE DATOS Y LÓGICA -->
+  <script src="/node_modules/html2canvas/dist/html2canvas.min.js"></script>
+  <script src="/node_modules/jspdf/dist/jspdf.umd.min.js"></script>
   <script src="js/svg_diagrams.js"></script>
   <script src="data/programa_analitico_data.js"></script>
   <script src="data/planeaciones_trimestre1.js"></script>

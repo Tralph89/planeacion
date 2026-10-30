@@ -1,0 +1,8 @@
+{
+  "name": "Sistema de Planeación Didáctica y Hojas de Actividad | Matemáticas 3° NEM",
+  "description": "Sistema de Planeación Didáctica, Programa Analítico y Hojas de Actividad para Matemáticas 3° de Secundaria (Nueva Escuela Mexicana - Fase 6).",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

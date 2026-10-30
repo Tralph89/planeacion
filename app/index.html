@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Planeación Didáctica y Hojas de Actividad | Matemáticas 3° NEM</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- BARRA SUPERIOR INSTITUCIONAL -->
+  <header class="app-topbar">
+    <div class="brand-block">
+      <div class="brand-badge">NEM · FASE 6</div>
+      <div class="brand-titles">
+        <h1>Planeación Didáctica y Hojas de Actividad · Matemáticas 3°</h1>
+        <p>Esc. Sec. Gral. Abelardo L. Rodríguez (26DES0010E) · Prof. José Rafael Leyva García · Guaymas, Sonora</p>
+      </div>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="nav-tab-btn active" data-tab="planeacion">📋 Plan de Clase (NEM)</button>
+      <button class="nav-tab-btn" data-tab="hojas">📝 Hojas de Actividad (Por Sesión)</button>
+      <button class="nav-tab-btn" data-tab="analitico">🗺️ Programa Analítico (38 Semanas)</button>
+      <button class="nav-tab-btn" data-tab="generador">✨ Generador IA / Ajustes</button>
+    </nav>
+  </header>
+
+  <!-- ESTRUCTURA PRINCIPAL -->
+  <div class="app-layout">
+    <!-- BARRA LATERAL: SELECTOR DE BLOQUES Y SEMANAS -->
+    <aside class="app-sidebar">
+      <div class="sidebar-section-title">Filtrar por Periodo / Trimestre</div>
+      <div class="trimester-filter">
+        <button class="trim-btn active" data-trim="1">Trim 1</button>
+        <button class="trim-btn" data-trim="2">Trim 2</button>
+        <button class="trim-btn" data-trim="3">Trim 3</button>
+        <button class="trim-btn" data-trim="4">Codiseño</button>
+      </div>
+      <button class="trim-btn" data-trim="0" style="width:100%;margin-bottom:10px;">
+        Ver Todo el Ciclo Escolar (Semanas 1 a 38 + Codiseño)
+      </button>
+
+      <input
+        type="text"
+        id="sidebarSearch"
+        class="search-box"
+        placeholder="🔍 Buscar por semana, tema o PDA..."
+      />
+
+      <div class="sidebar-section-title">Secuencias del Programa Analítico</div>
+      <div id="bloqueListContainer" class="bloque-list"></div>
+    </aside>
+
+    <!-- ÁREA DE TRABAJO Y VISTA PREVIA DE DOCUMENTOS -->
+    <main id="mainContentContainer" class="app-main"></main>
+  </div>
+
+  <!-- MÓDULOS DE DATOS Y LÓGICA -->
+  <script src="js/svg_diagrams.js"></script>
+  <script src="data/programa_analitico_data.js"></script>
+  <script src="data/planeaciones_trimestre1.js"></script>
+  <script src="data/planeaciones_trimestre2_y_3.js"></script>
+  <script src="js/session_expander.js"></script>
+  <script src="js/export_docx.js"></script>
+  <script src="js/ai_generator.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

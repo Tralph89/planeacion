@@ -97,18 +97,27 @@ window.AppController = {
     this.renderCourseSelector();
     this.renderSidebar();
     this.renderMainView();
+    this.updateApiKeyStatusUI();
   },
 
-  // Actualiza automáticamente cualquier curso existente que haya sido creado con catálogos incompletos (ej. Geografía con solo 3 contenidos)
+  // Actualiza automáticamente cualquier curso existente que haya sido creado con catálogos incompletos o desincronizados
   upgradeIncompleteCourseCatalogs() {
     let anyUpgraded = false;
     Object.values(this.state.coursesDB || {}).forEach((course) => {
       if (
         !course ||
-        course.id === "matematicas_3_alr" ||
         course.isPendingSetup ||
         !course.escuela ||
         course.escuela.asignatura === "Nueva Materia (Por definir)"
+      ) {
+        return;
+      }
+
+      // Si es el curso base de Matemáticas 3° pero el docente lo configuró para 2° o 1°, permitir actualizarlo
+      if (
+        course.id === "matematicas_3_alr" &&
+        !String(course.escuela.grado || "").includes("1") &&
+        !String(course.escuela.grado || "").includes("2")
       ) {
         return;
       }
@@ -120,17 +129,29 @@ window.AppController = {
       );
       const officialList = window.CatalogoSinteticoNEM.getContenidosForMateria(
         resolvedId,
-        course.escuela.grado || "1° de Secundaria",
+        course.escuela.grado || "2° de Secundaria",
         course.escuela.asignatura
       );
 
       const currentSinteticos = course.contenidosSinteticos || [];
-      const needsMat2Upgrade =
-        resolvedId === "matematicas_2" &&
-        (currentSinteticos.length === 0 ||
-          currentSinteticos.some((c) => (c.pda || "").includes("Ax²") || (c.contenido || "").includes("Pitágoras")));
+      const isGrade2 = String(course.escuela.grado || "").includes("2");
+      const isGrade1 = String(course.escuela.grado || "").includes("1");
+      const isMat = String(course.escuela.asignatura || "").toLowerCase().includes("matem");
+      const firstPda = String(currentSinteticos[0]?.pda || "");
 
-      if ((officialList.length > 6 && currentSinteticos.length <= 6) || needsMat2Upgrade) {
+      // Si es Matemáticas 2° pero tiene contenidos de 3° (sin criterios de divisibilidad) o longitud distinta de 12
+      const needsMat2Upgrade =
+        (resolvedId === "matematicas_2" || (isMat && isGrade2)) &&
+        (!firstPda.includes("divisibilidad") || currentSinteticos.length !== 12);
+
+      // Si es Matemáticas 1° pero longitud distinta de 14
+      const needsMat1Upgrade =
+        (resolvedId === "matematicas_1" || (isMat && isGrade1)) &&
+        currentSinteticos.length !== 14;
+
+      const needsGeneralUpgrade = officialList.length > 6 && currentSinteticos.length <= 6;
+
+      if (needsGeneralUpgrade || needsMat2Upgrade || needsMat1Upgrade) {
         course.escuela.materiaId = resolvedId;
         course.contenidosSinteticos = officialList;
 
@@ -153,7 +174,7 @@ window.AppController = {
           course.escuela
         );
 
-        const nuevosPlanes = { ...(course.planesDB || {}) };
+        const nuevosPlanes = {};
         bloquesNuevos.forEach((b) => {
           nuevosPlanes[b.id] = window.AIGenerator.generateLocalPlanForBloque(course.escuela, b);
         });
@@ -303,6 +324,78 @@ window.AppController = {
       `Curso activo: ${this.state.escuela.asignatura} (${this.state.escuela.grado}).`,
       "success"
     );
+  },
+
+  openApiKeyModal() {
+    const backdrop = document.getElementById("apiKeyModalBackdrop");
+    const input = document.getElementById("geminiApiKeyInput");
+    const badge = document.getElementById("apiKeyStatusBadge");
+    const currentKey = window.AIGenerator ? window.AIGenerator.getGeminiApiKey() : "";
+
+    if (input) {
+      input.value = currentKey;
+    }
+    if (badge) {
+      if (currentKey) {
+        badge.textContent = `Activa (...${currentKey.slice(-4)})`;
+        badge.style.color = "#0f766e";
+      } else {
+        badge.textContent = "(No configurada - Modo Motor Local NEM)";
+        badge.style.color = "#64748b";
+      }
+    }
+    if (backdrop) backdrop.style.display = "flex";
+  },
+
+  closeApiKeyModal() {
+    const backdrop = document.getElementById("apiKeyModalBackdrop");
+    if (backdrop) backdrop.style.display = "none";
+  },
+
+  toggleApiKeyVisibility() {
+    const input = document.getElementById("geminiApiKeyInput");
+    if (!input) return;
+    input.type = input.type === "password" ? "text" : "password";
+  },
+
+  saveApiKeyFromModal() {
+    const input = document.getElementById("geminiApiKeyInput");
+    const key = input ? input.value.trim() : "";
+    if (window.AIGenerator) {
+      window.AIGenerator.setGeminiApiKey(key);
+    }
+    this.closeApiKeyModal();
+    this.updateApiKeyStatusUI();
+    if (key) {
+      this.showToast("Clave de Gemini AI guardada. Generación en tiempo real activa.", "success");
+    } else {
+      this.showToast("Modo Motor Curricular Local NEM activado.", "info");
+    }
+  },
+
+  removeApiKeyFromModal() {
+    if (window.AIGenerator) {
+      window.AIGenerator.setGeminiApiKey("");
+    }
+    const input = document.getElementById("geminiApiKeyInput");
+    if (input) input.value = "";
+    this.closeApiKeyModal();
+    this.updateApiKeyStatusUI();
+    this.showToast("Clave eliminada. Se usará el motor curricular local NEM.", "info");
+  },
+
+  updateApiKeyStatusUI() {
+    const btn = document.getElementById("btnConfigApiKey");
+    if (!btn || !window.AIGenerator) return;
+    if (window.AIGenerator.hasGeminiApiKey()) {
+      btn.style.color = "#0f766e";
+      btn.style.borderColor = "#0f766e";
+      btn.title = "Gemini AI: Clave activa (Generación en vivo)";
+    } else {
+      btn.style.color = "";
+      btn.style.borderColor = "";
+      btn.title = "Configurar Clave Gemini AI (Opcional)";
+    }
   },
 
   openNewCourseModal() {
@@ -1549,7 +1642,7 @@ window.AppController = {
 
     const subBannerHTML = `
       <div class="context-subbanner no-export">
-        <span><strong>${esc.asignatura || "Matemáticas"} (${esc.grado || "3° Sec."})</strong> · ${esc.nombre} (CCT: ${esc.cct}) · ${esc.docente}</span>
+        <span><strong>${esc.asignatura || "Matemáticas"} (${esc.grado || esc.fase || "Fase 6"})</strong> · ${esc.nombre} (CCT: ${esc.cct}) · ${esc.docente}</span>
         <span>Grupos: ${esc.grupos} (${esc.turno}) · ${esc.municipio || "Guaymas, Sonora"} · Ciclo ${esc.cicloEscolar}</span>
       </div>
     `;
@@ -1945,15 +2038,34 @@ window.AppController = {
       grado,
       asignatura
     );
-    const hadIncompleteCatalog =
-      this.state.activeCourseId !== "matematicas_3_alr" &&
-      ((this.state.contenidosSinteticos || []).length < nuevosContenidosCatalogo.length || (resolvedMateriaId === "matematicas_2" && (this.state.contenidosSinteticos || []).some(c => (c.pda || "").includes("Ax²"))));
+    const prevGrado = currentCourse?.escuela?.grado || "";
+    const isGrade2 = String(grado).includes("2");
+    const isGrade1 = String(grado).includes("1");
+    const isMat = String(asignatura).toLowerCase().includes("matem");
+    const firstPda = String(this.state.contenidosSinteticos?.[0]?.pda || "");
 
-    // Si era una materia nueva pendiente de configurar, cambió de materia o tenía un catálogo incompleto, inicializar todos sus contenidos oficiales, diagnóstico y bloques
+    const needsMat2Upgrade =
+      (resolvedMateriaId === "matematicas_2" || (isMat && isGrade2)) &&
+      (!firstPda.includes("divisibilidad") || (this.state.contenidosSinteticos || []).length !== 12);
+
+    const needsMat1Upgrade =
+      (resolvedMateriaId === "matematicas_1" || (isMat && isGrade1)) &&
+      (this.state.contenidosSinteticos || []).length !== 14;
+
+    const hadIncompleteCatalog =
+      (this.state.contenidosSinteticos || []).length !== nuevosContenidosCatalogo.length ||
+      needsMat2Upgrade ||
+      needsMat1Upgrade;
+
+    const gradeOrMateriaChanged =
+      (resolvedMateriaId && resolvedMateriaId !== prevMateriaId) ||
+      (grado && grado !== prevGrado);
+
+    // Si era una materia nueva pendiente de configurar, cambió de materia o tenía un catálogo incompleto/desincronizado, inicializar todos sus contenidos oficiales, diagnóstico y bloques
     if (
       wasPending ||
       hadIncompleteCatalog ||
-      (resolvedMateriaId && resolvedMateriaId !== prevMateriaId && this.state.activeCourseId !== "matematicas_3_alr")
+      gradeOrMateriaChanged
     ) {
       this.state.contenidosSinteticos = nuevosContenidosCatalogo;
 
@@ -2028,7 +2140,11 @@ window.AppController = {
     );
     this.state.contenidosSinteticos = nuevos;
 
-    if (this.state.activeCourseId !== "matematicas_3_alr") {
+    const isNotOriginalMath3 =
+      this.state.activeCourseId !== "matematicas_3_alr" ||
+      !String(this.state.escuela.grado || "").includes("3");
+
+    if (isNotOriginalMath3) {
       const municipio = this.state.escuela.municipio || "Guaymas, Sonora";
       const grupos = this.state.escuela.grupos || "A, B";
       const codisenoBlocks = (this.state.bloquesDB || []).filter((b) => Number(b.trimestre) === 4);

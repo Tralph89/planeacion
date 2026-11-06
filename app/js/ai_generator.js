@@ -1,11 +1,117 @@
 // ============================================================================
 // MOTOR DE GENERACIÓN PEDAGÓGICA EN CASCADA (NEM - MULTI-MATERIA Y MULTI-GRADO)
 // Conecta las 5 etapas del flujo (Sintético PDF -> Analítico -> Codiseño ->
-// Plan de Clase -> Hojas de Actividad) con Gemini en el servidor y cuenta con
-// generadores pedagógicos locales de respaldo para cualquier materia.
+// Plan de Clase -> Hojas de Actividad) mediante:
+// 1. Llamada directa a Google Gemini REST API (Client-side, compatible con GitHub Pages)
+// 2. Servidor local Express/Node si está en localhost:3000
+// 3. Motor pedagógico contextualizado local offline (Zero errors en GitHub Pages)
 // ============================================================================
 
 window.AIGenerator = {
+  // --------------------------------------------------------------------------
+  // GESTIÓN DE ENTORNO Y CLAVE DE API DE GEMINI (CLIENT-SIDE)
+  // --------------------------------------------------------------------------
+  getGeminiApiKey() {
+    try {
+      return (localStorage.getItem("nem_gemini_api_key") || "").trim();
+    } catch (e) {
+      return "";
+    }
+  },
+
+  setGeminiApiKey(key) {
+    try {
+      if (key && key.trim()) {
+        localStorage.setItem("nem_gemini_api_key", key.trim());
+      } else {
+        localStorage.removeItem("nem_gemini_api_key");
+      }
+    } catch (e) {}
+  },
+
+  hasGeminiApiKey() {
+    return Boolean(this.getGeminiApiKey());
+  },
+
+  isLocalServerEnvironment() {
+    if (typeof window === "undefined") return false;
+    const host = window.location.hostname;
+    const port = window.location.port;
+    return host === "localhost" || host === "127.0.0.1" || port === "3000";
+  },
+
+  async callGeminiDirect(promptText, systemInstruction = "", responseSchema = null, inlineData = null) {
+    const apiKey = this.getGeminiApiKey();
+    if (!apiKey) {
+      throw new Error("No hay API Key configurada para Gemini.");
+    }
+
+    const model = "gemini-2.5-flash";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+    const parts = [];
+    if (inlineData) {
+      parts.push({
+        inlineData: {
+          mimeType: inlineData.mimeType || "application/pdf",
+          data: inlineData.data
+        }
+      });
+    }
+    parts.push({ text: promptText });
+
+    const body = {
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        temperature: 0.4
+      }
+    };
+
+    if (systemInstruction) {
+      body.systemInstruction = {
+        parts: [{ text: systemInstruction }]
+      };
+    }
+
+    if (responseSchema) {
+      body.generationConfig.responseMimeType = "application/json";
+      body.generationConfig.responseSchema = responseSchema;
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      let errorMsg = `Error de Gemini API (${res.status})`;
+      try {
+        const errJson = await res.json();
+        if (errJson?.error?.message) {
+          errorMsg = errJson.error.message;
+        }
+      } catch (e) {}
+      throw new Error(errorMsg);
+    }
+
+    const resJson = await res.json();
+    const candidateText = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!candidateText) {
+      throw new Error("Respuesta vacía de Gemini.");
+    }
+
+    if (responseSchema) {
+      try {
+        return JSON.parse(candidateText);
+      } catch (err) {
+        const clean = candidateText.replace(/```json/gi, "").replace(/```/g, "").trim();
+        return JSON.parse(clean);
+      }
+    }
+    return candidateText;
+  },
+
   contextosGuaymas: {
     pesca: {
       nombre: "Sector Pesquero y Marítimo Local",
@@ -33,115 +139,313 @@ window.AIGenerator = {
   // ETAPA 1: Extraer Contenidos y PDAs desde un archivo PDF con IA
   // --------------------------------------------------------------------------
   async parseSinteticoPDF(file, escuela) {
-    const pdfBase64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error("No se pudo leer el archivo PDF."));
-      reader.readAsDataURL(file);
-    });
+    const cleanEscuela = escuela || {};
+    const materia = cleanEscuela.asignatura || "Matemáticas";
+    const grado = cleanEscuela.grado || "2° de Secundaria";
+    const fase = cleanEscuela.fase || "Fase 6";
+    const campo = cleanEscuela.campoFormativo || "Saberes y Pensamiento Científico";
 
-    const response = await fetch("/api/parse-sintetico-pdf", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pdfBase64, escuela })
-    });
+    // 1. Si el usuario configuró su clave Gemini, extraer directamente con Gemini multimodal en el cliente
+    if (this.hasGeminiApiKey()) {
+      try {
+        const pdfBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = () => reject(new Error("No se pudo leer el archivo PDF."));
+          reader.readAsDataURL(file);
+        });
+        const cleanBase64 = String(pdfBase64).replace(/^data:application\/pdf;base64,/, "");
 
-    const data = await response.json();
-    if (!response.ok || !Array.isArray(data.contenidos)) {
-      throw new Error(data.error || "No se pudieron extraer los contenidos del PDF.");
+        const promptText = `
+Analiza el documento PDF del Programa Sintético de la Nueva Escuela Mexicana (SEP).
+Extrae TODOS los Contenidos y Procesos de Desarrollo de Aprendizaje (PDA) oficiales completos que corresponden específicamente a:
+- Fase: ${fase}
+- Grado: ${grado}
+- Campo Formativo: ${campo}
+- Materia / Disciplina: ${materia}
+Distribuye en los 3 trimestres.
+`.trim();
+
+        const schema = {
+          type: "OBJECT",
+          properties: {
+            contenidos: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  contenido: { type: "STRING" },
+                  pda: { type: "STRING" },
+                  ejesSugeridos: { type: "STRING" },
+                  semanasSugeridas: { type: "INTEGER" },
+                  trimestreSugerido: { type: "INTEGER" }
+                },
+                required: ["contenido", "pda"]
+              }
+            }
+          },
+          required: ["contenidos"]
+        };
+
+        const result = await this.callGeminiDirect(
+          promptText,
+          "Eres un especialista curricular de la Nueva Escuela Mexicana (SEP). Devuelve siempre JSON con los Contenidos y PDAs en español.",
+          schema,
+          { mimeType: "application/pdf", data: cleanBase64 }
+        );
+
+        if (Array.isArray(result?.contenidos) && result.contenidos.length > 0) {
+          return result.contenidos.map((c, idx) => ({
+            id: `CS-${String(idx + 1).padStart(2, "0")}`,
+            contenido: c.contenido,
+            pda: c.pda,
+            ejesSugeridos: c.ejesSugeridos || "Pensamiento crítico",
+            semanasSugeridas: Number(c.semanasSugeridas) || 2,
+            trimestreSugerido: Number(c.trimestreSugerido) || ((idx % 3) + 1),
+            seleccionado: true
+          }));
+        }
+      } catch (err) {
+        console.warn("[AIGenerator]: Extracción de PDF con Gemini falló, usando catálogo oficial:", err);
+      }
     }
 
-    return data.contenidos.map((c, idx) => ({
-      id: `CS-${String(idx + 1).padStart(2, "0")}`,
-      contenido: c.contenido,
-      pda: c.pda,
-      ejesSugeridos: c.ejesSugeridos || "Pensamiento crítico",
-      semanasSugeridas: Number(c.semanasSugeridas) || 2,
-      trimestreSugerido: Number(c.trimestreSugerido) || ((idx % 3) + 1),
-      seleccionado: true
-    }));
+    // 2. Si estamos en entorno local con backend Node/Express activo
+    if (this.isLocalServerEnvironment()) {
+      try {
+        const pdfBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = () => reject(new Error("No se pudo leer el archivo PDF."));
+          reader.readAsDataURL(file);
+        });
+
+        const response = await fetch("/api/parse-sintetico-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pdfBase64, escuela: cleanEscuela })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data?.contenidos) && data.contenidos.length > 0) {
+            return data.contenidos.map((c, idx) => ({
+              id: `CS-${String(idx + 1).padStart(2, "0")}`,
+              contenido: c.contenido,
+              pda: c.pda,
+              ejesSugeridos: c.ejesSugeridos || "Pensamiento crítico",
+              semanasSugeridas: Number(c.semanasSugeridas) || 2,
+              trimestreSugerido: Number(c.trimestreSugerido) || ((idx % 3) + 1),
+              seleccionado: true
+            }));
+          }
+        }
+      } catch (e) {
+        console.warn("[AIGenerator]: Servidor local /api/parse-sintetico-pdf no disponible.");
+      }
+    }
+
+    // 3. Respaldo sin conexión / GitHub Pages: Usar catálogo oficial integrado
+    const resolvedId = window.CatalogoSinteticoNEM
+      ? window.CatalogoSinteticoNEM.resolveMateriaId(cleanEscuela.materiaId, materia, grado)
+      : "matematicas_2";
+
+    if (window.CatalogoSinteticoNEM) {
+      return window.CatalogoSinteticoNEM.getContenidosForMateria(resolvedId, grado, materia);
+    }
+    return [];
   },
 
   // --------------------------------------------------------------------------
   // ETAPA 2A: Generar / Enriquecer Diagnóstico Socioeducativo (Primer Plano)
   // --------------------------------------------------------------------------
   async generateDiagnostico(escuela, diagnosticoActual, promptExtra = "") {
-    try {
-      const response = await fetch("/api/generate-diagnostico", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ escuela, diagnosticoActual, promptExtra })
-      });
-      const data = await response.json();
-      if (response.ok && data.diagnostico) {
-        return data.diagnostico;
+    const esc = escuela || {};
+    const diagActual = diagnosticoActual || {};
+
+    // 1. Directo con Gemini API si el usuario configuró clave
+    if (this.hasGeminiApiKey()) {
+      try {
+        const prompt = `
+Redacta o enriquece el Primer Plano (Diagnóstico Socioeducativo / Lectura de la Realidad) para el Programa Analítico de la Nueva Escuela Mexicana con los siguientes datos:
+- Escuela: ${esc.nombre || "Escuela Secundaria"} (CCT: ${esc.cct || "26DES0010E"})
+- Docente: ${esc.docente || "Docente"}
+- Localidad / Municipio: ${esc.municipio || "Guaymas, Sonora"}
+- Fase y Grado: ${esc.fase || "Fase 6"} · ${esc.grado || "2° de Secundaria"} (Grupos: ${esc.grupos || "A, B"}, Turno: ${esc.turno || "Vespertino"})
+- Campo Formativo: ${esc.campoFormativo || "Saberes y Pensamiento Científico"}
+- Materia / Disciplina: ${esc.asignatura || "Matemáticas"}
+- Diagnóstico actual: ${diagActual.comunidad || ""}
+- Petición del docente: ${promptExtra || "Enriquecer la vinculación de la asignatura con la comunidad."}
+`.trim();
+
+        const schema = {
+          type: "OBJECT",
+          properties: {
+            comunidad: { type: "STRING" },
+            areasPrioritarias: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  titulo: { type: "STRING" },
+                  descripcion: { type: "STRING" }
+                },
+                required: ["titulo", "descripcion"]
+              }
+            }
+          },
+          required: ["comunidad", "areasPrioritarias"]
+        };
+
+        const data = await this.callGeminiDirect(
+          prompt,
+          "Eres un asesor técnico pedagógico experto en el Programa Analítico de la NEM. Responde en español formal en formato JSON.",
+          schema
+        );
+        if (data && data.comunidad) return data;
+      } catch (err) {
+        console.warn("[AIGenerator]: Direct Gemini error, usando generador local:", err.message);
       }
-      throw new Error(data.error || "Fallback local");
-    } catch (e) {
-      return {
-        comunidad: `La escuela ${escuela.nombre} (CCT ${escuela.cct}), ubicada en ${escuela.municipio || "la localidad"}, atiende a los grupos ${escuela.grupos} del turno ${escuela.turno} en ${escuela.grado} (${escuela.fase}). El entorno socioeconómico y cultural de las familias brinda oportunidades valiosas para vincular la asignatura de ${escuela.asignatura} (${escuela.campoFormativo}) con situaciones auténticas de la comunidad, fortaleciendo la participación activa, la inclusión y el pensamiento crítico.`,
-        areasPrioritarias: [
-          {
-            titulo: `1. Comprensión y Aplicación en ${escuela.asignatura}`,
-            descripcion: `Fortalecer el dominio práctico de los Procesos de Desarrollo de Aprendizaje (PDA) de ${escuela.grado} mediante proyectos contextualizados.`
-          },
-          {
-            titulo: "2. Argumentación, Lectura Crítica y Trabajo Colaborativo",
-            descripcion: "Impulsar la comunicación oral, escrita y gráfica de ideas para resolver problemáticas reales del entorno escolar."
-          },
-          {
-            titulo: "3. Vinculación Comunitaria y Evaluación Formativa",
-            descripcion: "Conectar los contenidos curriculares con retos de la localidad y retroalimentar de manera continua el avance de cada estudiante."
-          }
-        ]
-      };
+    } else if (this.isLocalServerEnvironment()) {
+      // 2. Servidor local Express
+      try {
+        const response = await fetch("/api/generate-diagnostico", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ escuela: esc, diagnosticoActual: diagActual, promptExtra })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.diagnostico) return data.diagnostico;
+        }
+      } catch (e) {
+        console.warn("[AIGenerator]: Local server error, usando generador local.");
+      }
     }
+
+    // 3. Generador pedagógico situado local (cero errores en GitHub Pages)
+    return {
+      comunidad: `La escuela ${esc.nombre || "Secundaria"} (CCT ${esc.cct || "26DES0010E"}), ubicada en ${esc.municipio || "la localidad"}, atiende a los grupos ${esc.grupos || "escolares"} del turno ${esc.turno || "Matutino"} en ${esc.grado || "Secundaria"} (${esc.fase || "Fase 6"}). El entorno socioeconómico y productivo de la comunidad brinda oportunidades estratégicas para vincular los contenidos de ${esc.asignatura || "la materia"} (${esc.campoFormativo || "Campo Formativo"}) con problemáticas reales del alumnado, promoviendo la inclusión, la vida saludable y el pensamiento crítico.`,
+      areasPrioritarias: [
+        {
+          titulo: `1. Comprensión y Aplicación Práctica en ${esc.asignatura || "la Asignatura"}`,
+          descripcion: `Fortalecer el dominio de los Procesos de Desarrollo de Aprendizaje (PDA) correspondientes a ${esc.grado || "este grado"} mediante situaciones didácticas contextualizadas.`
+        },
+        {
+          titulo: "2. Pensamiento Crítico, Argumentación y Trabajo Colaborativo",
+          descripcion: "Fomentar el análisis colaborativo, la interpretación de evidencias y la resolución de situaciones desafiantes en el aula."
+        },
+        {
+          titulo: "3. Vinculación Comunitaria y Evaluación Formativa Continua",
+          descripcion: `Articular los proyectos escolares con las necesidades prioritarias detectadas en ${esc.municipio || "el entorno escolar"} y brindar retroalimentación constante.`
+        }
+      ]
+    };
   },
 
   // --------------------------------------------------------------------------
   // ETAPA 2B: Generar Bloques del Programa Analítico desde Sintético + Diagnóstico
   // --------------------------------------------------------------------------
   async generateAnaliticoBloques(escuela, diagnostico, contenidosSinteticos, promptExtra = "") {
+    const esc = escuela || {};
+    const diag = diagnostico || {};
     const activos = (contenidosSinteticos || []).filter((c) => c.seleccionado !== false);
-    try {
-      const response = await fetch("/api/generate-analitico", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          escuela,
-          diagnostico,
-          contenidosSinteticos: activos,
-          promptExtra
-        })
-      });
-      const data = await response.json();
-      if (response.ok && Array.isArray(data.bloques) && data.bloques.length > 0) {
-        return this.normalizeBloquesAnalitico(data.bloques, escuela);
-      }
-      throw new Error(data.error || "Fallback local");
-    } catch (e) {
-      let currentWeek = 1;
-      const raw = activos.map((c, idx) => {
-        const numSem = Number(c.semanasSugeridas) || 2;
-        const semStr =
-          numSem === 1
-            ? `Semana ${currentWeek}`
-            : `Semanas ${currentWeek} y ${currentWeek + numSem - 1}`;
-        currentWeek += numSem;
-        return {
-          trimestre: Number(c.trimestreSugerido) || ((idx % 3) + 1),
-          semanas: semStr,
-          numSemanas: numSem,
-          numSesiones: numSem * 5,
-          contenidoSintetico: c.contenido,
-          contenidoContextualizado: `${c.contenido} (Contextualizado en ${escuela.municipio || "la comunidad escolar"} para ${escuela.asignatura})`,
-          pda: c.pda,
-          justificacion: `Se contextualiza para responder a las necesidades detectadas en el diagnóstico socioeducativo de ${escuela.nombre} (${escuela.grupos}).`,
-          ejesArticuladores: c.ejesSugeridos || "Pensamiento crítico e Inclusión"
+
+    // 1. Directo con Gemini si hay clave configurada
+    if (this.hasGeminiApiKey()) {
+      try {
+        const prompt = `
+Contextualiza y dosifica los Contenidos y PDAs del Programa Sintético seleccionados para el Segundo Plano (Programa Analítico NEM):
+- Escuela: ${esc.nombre || "Escuela Secundaria"} (${esc.cct || ""}) en ${esc.municipio || "México"}
+- Materia y Grado: ${esc.asignatura || "Matemáticas"} (${esc.grado || "2° de Secundaria"}, ${esc.fase || "Fase 6"})
+- Diagnóstico (Primer Plano): ${diag.comunidad || ""}
+- Indicaciones: ${promptExtra || "Contextualizar a la comunidad y distribuir en 3 trimestres."}
+Contenidos Sintéticos:
+${JSON.stringify(activos, null, 2)}
+`.trim();
+
+        const schema = {
+          type: "OBJECT",
+          properties: {
+            bloques: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  trimestre: { type: "INTEGER" },
+                  semanas: { type: "STRING" },
+                  numSemanas: { type: "INTEGER" },
+                  numSesiones: { type: "INTEGER" },
+                  contenidoSintetico: { type: "STRING" },
+                  contenidoContextualizado: { type: "STRING" },
+                  pda: { type: "STRING" },
+                  justificacion: { type: "STRING" },
+                  ejesArticuladores: { type: "STRING" }
+                },
+                required: ["trimestre", "semanas", "contenidoSintetico", "contenidoContextualizado", "pda", "ejesArticuladores"]
+              }
+            }
+          },
+          required: ["bloques"]
         };
-      });
-      return this.normalizeBloquesAnalitico(raw, escuela);
+
+        const resData = await this.callGeminiDirect(
+          prompt,
+          "Eres un experto curricular de la NEM. Devuelve JSON con los bloques contextualizados.",
+          schema
+        );
+        if (Array.isArray(resData?.bloques) && resData.bloques.length > 0) {
+          return this.normalizeBloquesAnalitico(resData.bloques, esc);
+        }
+      } catch (err) {
+        console.warn("[AIGenerator]: Gemini Analítico falló, usando normalizador local:", err.message);
+      }
+    } else if (this.isLocalServerEnvironment()) {
+      // 2. Servidor local si está en localhost
+      try {
+        const response = await fetch("/api/generate-analitico", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            escuela: esc,
+            diagnostico: diag,
+            contenidosSinteticos: activos,
+            promptExtra
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data?.bloques) && data.bloques.length > 0) {
+            return this.normalizeBloquesAnalitico(data.bloques, esc);
+          }
+        }
+      } catch (e) {
+        console.warn("[AIGenerator]: Local server error en analítico.");
+      }
     }
+
+    // 3. Generación contextualizada local instantánea
+    let currentWeek = 1;
+    const raw = activos.map((c, idx) => {
+      const numSem = Number(c.semanasSugeridas) || 2;
+      const semStr =
+        numSem === 1
+          ? `Semana ${currentWeek}`
+          : `Semanas ${currentWeek} y ${currentWeek + numSem - 1}`;
+      currentWeek += numSem;
+      return {
+        trimestre: Number(c.trimestreSugerido) || ((idx % 3) + 1),
+        semanas: semStr,
+        numSemanas: numSem,
+        numSesiones: numSem * 5,
+        contenidoSintetico: c.contenido,
+        contenidoContextualizado: `${c.contenido} (Contextualizado en ${esc.municipio || "la comunidad escolar"} para ${esc.asignatura || "la materia"})`,
+        pda: c.pda,
+        justificacion: `Se contextualiza para responder a las necesidades detectadas en el diagnóstico socioeducativo de ${esc.nombre || "la escuela"} (${esc.grupos || "los grupos"}).`,
+        ejesArticuladores: c.ejesSugeridos || "Pensamiento crítico e Inclusión"
+      };
+    });
+    return this.normalizeBloquesAnalitico(raw, esc);
   },
 
   normalizeBloquesAnalitico(rawBloques, escuela) {
@@ -184,69 +488,227 @@ window.AIGenerator = {
   // ETAPA 3: Proponer Bloques de Codiseño Curricular (Tercer Plano)
   // --------------------------------------------------------------------------
   async generateCodisenoBloques(escuela, diagnostico, existingBloquesCount = 15, promptExtra = "") {
-    const defaultDiag = this.getDefaultDiagramForSubject(escuela?.asignatura);
-    try {
-      const response = await fetch("/api/generate-codiseno", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ escuela, diagnostico, promptExtra })
-      });
-      const data = await response.json();
-      if (response.ok && Array.isArray(data.bloquesCodiseno) && data.bloquesCodiseno.length > 0) {
-        return data.bloquesCodiseno.map((b, idx) => ({
-          id: `B${String(existingBloquesCount + idx + 1).padStart(2, "0")}`,
-          trimestre: 4,
-          semanas: b.semanas || `Codiseño ${idx + 1} (1 Semana)`,
-          numSemanas: Number(b.numSemanas) || 1,
-          numSesiones: Number(b.numSesiones) || 5,
-          periodoSugerido: "Transversal / Reforzamiento Anual",
-          contenidoSintetico: b.contenidoSintetico || "Contenido Regional de Codiseño",
-          contenidoContextualizado: b.contenidoContextualizado || b.contenidoSintetico,
-          pda: b.pda || "Desarrolla saberes comunitarios aplicados a problemáticas reales de su localidad.",
-          justificacion: b.justificacion || "Incorporado por el colectivo docente para atender necesidades específicas de la escuela.",
-          ejesArticuladores: b.ejesArticuladores || "Pensamiento crítico e Interculturalidad crítica",
-          diagramType: defaultDiag
-        }));
-      }
-      throw new Error(data.error || "Fallback local");
-    } catch (e) {
-      return [
-        {
-          id: `B${String(existingBloquesCount + 1).padStart(2, "0")}`,
-          trimestre: 4,
-          semanas: `Codiseño (1 Semana)`,
-          numSemanas: 1,
-          numSesiones: 5,
-          periodoSugerido: "Transversal / Reforzamiento Anual",
-          contenidoSintetico: `Proyecto de Codiseño Local en ${escuela.asignatura}: ${promptExtra || "Saberes y Retos de " + (escuela.municipio || "la Comunidad")}`,
-          contenidoContextualizado: `Aplicación práctica de ${escuela.asignatura} para atender necesidades prioritarias de ${escuela.nombre} en ${escuela.municipio || "la región"}.`,
-          pda: `Indaga, propone y aplica soluciones desde ${escuela.asignatura} (${escuela.grado}) ante problemáticas cotidianas de su entorno escolar y comunitario.`,
-          justificacion: `Definido en el Tercer Plano (Codiseño) a partir de la lectura de la realidad de los grupos ${escuela.grupos}.`,
-          ejesArticuladores: "Pensamiento crítico y Vida saludable",
-          diagramType: defaultDiag
+    const esc = escuela || {};
+    const diag = diagnostico || {};
+    const defaultDiag = this.getDefaultDiagramForSubject(esc.asignatura);
+
+    // 1. Directo con Gemini API si hay clave
+    if (this.hasGeminiApiKey()) {
+      try {
+        const prompt = `
+Propón 1 o 2 bloques de Codiseño Curricular (Tercer Plano NEM) para atender problemáticas específicas de la comunidad o la escuela:
+- Escuela: ${esc.nombre || "Secundaria"} (${esc.municipio || "Comunidad"})
+- Asignatura: ${esc.asignatura || "Matemáticas"} (${esc.grado || "2° de Secundaria"})
+- Diagnóstico: ${diag.comunidad || ""}
+- Énfasis docente: ${promptExtra || "Cuidado del agua, saberes comunitarios y reforzamiento académico."}
+`.trim();
+
+        const schema = {
+          type: "OBJECT",
+          properties: {
+            bloquesCodiseno: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  semanas: { type: "STRING" },
+                  numSemanas: { type: "INTEGER" },
+                  numSesiones: { type: "INTEGER" },
+                  contenidoSintetico: { type: "STRING" },
+                  contenidoContextualizado: { type: "STRING" },
+                  pda: { type: "STRING" },
+                  justificacion: { type: "STRING" },
+                  ejesArticuladores: { type: "STRING" }
+                },
+                required: ["contenidoSintetico", "contenidoContextualizado", "pda", "justificacion", "ejesArticuladores"]
+              }
+            }
+          },
+          required: ["bloquesCodiseno"]
+        };
+
+        const resData = await this.callGeminiDirect(prompt, "Experto en Codiseño Curricular NEM.", schema);
+        if (Array.isArray(resData?.bloquesCodiseno) && resData.bloquesCodiseno.length > 0) {
+          return resData.bloquesCodiseno.map((b, idx) => ({
+            id: `B${String(existingBloquesCount + idx + 1).padStart(2, "0")}`,
+            trimestre: 4,
+            semanas: b.semanas || `Codiseño ${idx + 1} (1 Semana)`,
+            numSemanas: Number(b.numSemanas) || 1,
+            numSesiones: Number(b.numSesiones) || 5,
+            periodoSugerido: "Transversal / Reforzamiento Anual",
+            contenidoSintetico: b.contenidoSintetico || "Contenido Regional de Codiseño",
+            contenidoContextualizado: b.contenidoContextualizado || b.contenidoSintetico,
+            pda: b.pda,
+            justificacion: b.justificacion,
+            ejesArticuladores: b.ejesArticuladores || "Pensamiento crítico",
+            diagramType: defaultDiag
+          }));
         }
-      ];
+      } catch (err) {
+        console.warn("[AIGenerator]: Gemini Codiseño falló, usando generador local:", err.message);
+      }
+    } else if (this.isLocalServerEnvironment()) {
+      // 2. Servidor local Express
+      try {
+        const response = await fetch("/api/generate-codiseno", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ escuela: esc, diagnostico: diag, promptExtra })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data?.bloquesCodiseno) && data.bloquesCodiseno.length > 0) {
+            return data.bloquesCodiseno.map((b, idx) => ({
+              id: `B${String(existingBloquesCount + idx + 1).padStart(2, "0")}`,
+              trimestre: 4,
+              semanas: b.semanas || `Codiseño ${idx + 1} (1 Semana)`,
+              numSemanas: Number(b.numSemanas) || 1,
+              numSesiones: Number(b.numSesiones) || 5,
+              periodoSugerido: "Transversal / Reforzamiento Anual",
+              contenidoSintetico: b.contenidoSintetico || "Contenido Regional de Codiseño",
+              contenidoContextualizado: b.contenidoContextualizado || b.contenidoSintetico,
+              pda: b.pda || "Desarrolla saberes comunitarios aplicados a problemáticas reales de su localidad.",
+              justificacion: b.justificacion || "Incorporado por el colectivo docente para atender necesidades específicas de la escuela.",
+              ejesArticuladores: b.ejesArticuladores || "Pensamiento crítico e Interculturalidad crítica",
+              diagramType: defaultDiag
+            }));
+          }
+        }
+      } catch (e) {
+        console.warn("[AIGenerator]: Local server error en codiseño.");
+      }
     }
+
+    // 3. Generador de codiseño local situado
+    return [
+      {
+        id: `B${String(existingBloquesCount + 1).padStart(2, "0")}`,
+        trimestre: 4,
+        semanas: `Codiseño (1 Semana)`,
+        numSemanas: 1,
+        numSesiones: 5,
+        periodoSugerido: "Transversal / Reforzamiento Anual",
+        contenidoSintetico: `Proyecto de Codiseño Local en ${esc.asignatura || "la materia"}: ${promptExtra || "Saberes y Retos de " + (esc.municipio || "la Comunidad")}`,
+        contenidoContextualizado: `Aplicación práctica de ${esc.asignatura || "la materia"} para atender necesidades prioritarias de ${esc.nombre || "la escuela"} en ${esc.municipio || "la región"}.`,
+        pda: `Indaga, propone y aplica soluciones desde ${esc.asignatura || "la materia"} (${esc.grado || "Secundaria"}) ante problemáticas cotidianas de su entorno escolar y comunitario.`,
+        justificacion: `Definido en el Tercer Plano (Codiseño) a partir de la lectura de la realidad de los grupos ${esc.grupos || "escolares"}.`,
+        ejesArticuladores: "Pensamiento crítico y Vida saludable",
+        diagramType: defaultDiag
+      }
+    ];
   },
 
   // --------------------------------------------------------------------------
   // ETAPA 4: Generar Plan de Clase Completo de un Bloque desde Analítico/Codiseño
   // --------------------------------------------------------------------------
   async generatePlanForBloque(escuela, diagnostico, bloque, promptExtra = "") {
-    try {
-      const response = await fetch("/api/generate-plan-bloque", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ escuela, diagnostico, bloque, promptExtra })
-      });
-      const data = await response.json();
-      if (response.ok && data.plan && Array.isArray(data.plan.sesiones)) {
-        return data.plan;
+    const esc = escuela || {};
+    const diag = diagnostico || {};
+
+    // 1. Directo con Gemini API si hay clave
+    if (this.hasGeminiApiKey()) {
+      try {
+        const prompt = `
+Genera un Plan de Clase completo (con sus sesiones progresivas y hojas de actividad) para el siguiente bloque curricular NEM:
+- Escuela: ${esc.nombre || "Secundaria"} (${esc.municipio || ""})
+- Materia / Grado: ${esc.asignatura || "Matemáticas"} (${esc.grado || "2° de Secundaria"})
+- Bloque: ${bloque.id} (${bloque.semanas})
+- Contenido Sintético: ${bloque.contenidoSintetico}
+- Contenido Contextualizado: ${bloque.contenidoContextualizado}
+- PDA: ${bloque.pda}
+- Ejes Articuladores: ${bloque.ejesArticuladores}
+- Número de sesiones a generar: ${bloque.numSesiones || 5}
+- Petición del docente: ${promptExtra || "Secuencia didáctica activa con Inicio, Desarrollo, Cierre y Hojas de Actividad."}
+`.trim();
+
+        const schema = {
+          type: "OBJECT",
+          properties: {
+            plan: {
+              type: "OBJECT",
+              properties: {
+                sesiones: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      numero: { type: "INTEGER" },
+                      semana: { type: "STRING" },
+                      titulo: { type: "STRING" },
+                      inicio: { type: "STRING" },
+                      desarrollo: { type: "STRING" },
+                      cierre: { type: "STRING" },
+                      hojaActividad: {
+                        type: "OBJECT",
+                        properties: {
+                          tituloHoja: { type: "STRING" },
+                          instrucciones: { type: "STRING" },
+                          notaTeorica: { type: "STRING" },
+                          ejercicios: {
+                            type: "ARRAY",
+                            items: {
+                              type: "OBJECT",
+                              properties: {
+                                enunciado: { type: "STRING" },
+                                respuesta: { type: "STRING" }
+                              },
+                              required: ["enunciado", "respuesta"]
+                            }
+                          },
+                          boletoSalida: { type: "STRING" }
+                        },
+                        required: ["tituloHoja", "instrucciones", "ejercicios", "boletoSalida"]
+                      }
+                    },
+                    required: ["numero", "titulo", "inicio", "desarrollo", "cierre", "hojaActividad"]
+                  }
+                }
+              },
+              required: ["sesiones"]
+            }
+          },
+          required: ["plan"]
+        };
+
+        const resData = await this.callGeminiDirect(prompt, "Planificador docente experto en la Nueva Escuela Mexicana.", schema);
+        if (resData?.plan && Array.isArray(resData.plan.sesiones) && resData.plan.sesiones.length > 0) {
+          const diagType = bloque.diagramType || this.getDefaultDiagramForSubject(esc.asignatura);
+          resData.plan.sesiones.forEach((s) => {
+            if (s.hojaActividad && !s.hojaActividad.diagramType) {
+              s.hojaActividad.diagramType = diagType;
+            }
+          });
+          return {
+            periodo: bloque.periodoSugerido || `Ciclo ${esc.cicloEscolar || "2025-2026"}`,
+            cicloEscolar: esc.cicloEscolar || "2025-2026",
+            tiempoRealizacion: `${bloque.numSemanas || 1} semana(s) (${resData.plan.sesiones.length} sesiones)`,
+            ...resData.plan
+          };
+        }
+      } catch (err) {
+        console.warn("[AIGenerator]: Gemini Plan falló, usando generador local:", err.message);
       }
-      throw new Error(data.error || "Fallback local");
-    } catch (e) {
-      return this.generateLocalPlanForBloque(escuela, bloque, promptExtra);
+    } else if (this.isLocalServerEnvironment()) {
+      // 2. Servidor local Express
+      try {
+        const response = await fetch("/api/generate-plan-bloque", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ escuela: esc, diagnostico: diag, bloque, promptExtra })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.plan && Array.isArray(data.plan.sesiones)) {
+            return data.plan;
+          }
+        }
+      } catch (e) {
+        console.warn("[AIGenerator]: Local server error en plan de bloque.");
+      }
     }
+
+    // 3. Generador local completo de 5 sesiones con hojas de actividad
+    return this.generateLocalPlanForBloque(esc, bloque, promptExtra);
   },
 
   generateLocalPlanForBloque(escuela, bloque, promptExtra = "") {
@@ -311,44 +773,51 @@ window.AIGenerator = {
   // ETAPA 5: Sincronizar Hojas de Actividad tomando el Plan de Clase Editado
   // --------------------------------------------------------------------------
   async syncHojasFromPlan(escuela, bloque, sesionesPlan, promptExtra = "") {
-    try {
-      const response = await fetch("/api/sync-hojas-from-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ escuela, bloque, sesionesPlan, promptExtra })
-      });
-      const data = await response.json();
-      if (response.ok && Array.isArray(data.hojasPorSesion) && data.hojasPorSesion.length > 0) {
-        return data.hojasPorSesion;
-      }
-      throw new Error(data.error || "Fallback local");
-    } catch (e) {
-      const diag = bloque.diagramType || this.getDefaultDiagramForSubject(escuela?.asignatura);
-      return (sesionesPlan || []).map((s) => ({
-        numero: s.numero,
-        hojaActividad: {
-          tituloHoja: `Hoja de Trabajo Sincronizada · ${s.titulo || "Sesión " + s.numero}`,
-          instrucciones: `Con base en las actividades desarrolladas en la sesión ("${s.titulo}"), resuelve cada apartado de manera ordenada.${promptExtra ? " " + promptExtra : ""}`,
-          notaTeorica: `Síntesis de la sesión: ${(s.desarrollo || bloque.pda).slice(0, 220)}`,
-          diagramType: s.hojaActividad?.diagramType || diag,
-          ejercicios: [
-            {
-              enunciado: `1. Actividad de Inicio y Exploración: Retomando el planteamiento inicial de la clase (${(s.inicio || "").slice(0, 140)}...), desarrolla tu planteamiento o respuesta inicial.`,
-              respuesta: `Análisis coherente con la actividad de inicio planteada en el Plan de Clase.`
-            },
-            {
-              enunciado: `2. Actividad Central de Desarrollo: Realiza la actividad principal descrita en la sesión (${(s.desarrollo || "").slice(0, 160)}...). Registra aquí tu procedimiento, análisis o producción.`,
-              respuesta: `Resolución paso a paso acorde al desarrollo de la sesión "${s.titulo}".`
-            },
-            {
-              enunciado: `3. Ejercicio de Consolidación del PDA (${bloque.pda}): Aplica lo aprendido a un caso concreto de ${escuela.municipio || "tu comunidad"}.`,
-              respuesta: `Aplicación correcta y justificada del PDA de la secuencia.`
-            }
-          ],
-          boletoSalida: `Evaluación de Cierre: ${(s.cierre || "Explica qué aprendiste hoy y cómo lo resolviste.").slice(0, 160)}`
+    const esc = escuela || {};
+
+    if (this.isLocalServerEnvironment() && !this.hasGeminiApiKey()) {
+      try {
+        const response = await fetch("/api/sync-hojas-from-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ escuela: esc, bloque, sesionesPlan, promptExtra })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data?.hojasPorSesion) && data.hojasPorSesion.length > 0) {
+            return data.hojasPorSesion;
+          }
         }
-      }));
+      } catch (e) {
+        console.warn("[AIGenerator]: Local server error en sync hojas.");
+      }
     }
+
+    const diag = bloque.diagramType || this.getDefaultDiagramForSubject(esc.asignatura);
+    return (sesionesPlan || []).map((s) => ({
+      numero: s.numero,
+      hojaActividad: {
+        tituloHoja: `Hoja de Trabajo Sincronizada · ${s.titulo || "Sesión " + s.numero}`,
+        instrucciones: `Con base en las actividades desarrolladas en la sesión ("${s.titulo}"), resuelve cada apartado de manera ordenada.${promptExtra ? " " + promptExtra : ""}`,
+        notaTeorica: `Síntesis de la sesión: ${(s.desarrollo || bloque.pda).slice(0, 220)}`,
+        diagramType: s.hojaActividad?.diagramType || diag,
+        ejercicios: [
+          {
+            enunciado: `1. Actividad de Inicio y Exploración: Retomando el planteamiento inicial de la clase (${(s.inicio || "").slice(0, 140)}...), desarrolla tu planteamiento o respuesta inicial.`,
+            respuesta: `Análisis coherente con la actividad de inicio planteada en el Plan de Clase.`
+          },
+          {
+            enunciado: `2. Actividad Central de Desarrollo: Realiza la actividad principal descrita en la sesión (${(s.desarrollo || "").slice(0, 160)}...). Registra aquí tu procedimiento, análisis o producción.`,
+            respuesta: `Resolución paso a paso acorde al desarrollo de la sesión "${s.titulo}".`
+          },
+          {
+            enunciado: `3. Ejercicio de Consolidación del PDA (${bloque.pda}): Aplica lo aprendido a un caso concreto de ${esc.municipio || "tu comunidad"}.`,
+            respuesta: `Aplicación correcta y justificada del PDA de la secuencia.`
+          }
+        ],
+        boletoSalida: `Evaluación de Cierre: ${(s.cierre || "Explica qué aprendiste hoy y cómo lo resolviste.").slice(0, 160)}`
+      }
+    }));
   },
 
   // --------------------------------------------------------------------------
@@ -392,24 +861,102 @@ window.AIGenerator = {
   },
 
   async generateWithServerAI(bloqueInfo, contextoKey, customPrompt, nextSessionNumber, escuela = {}) {
+    const esc = escuela || {};
     const ctx = this.contextosGuaymas[contextoKey] || this.contextosGuaymas.pesca;
-    const response = await fetch("/api/generate-session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        bloqueInfo,
-        contexto: ctx,
-        customPrompt,
-        nextSessionNumber,
-        escuela
-      })
-    });
 
-    const data = await response.json();
-    if (!response.ok || !data.session) {
-      throw new Error(data.error || `Error del servidor (${response.status})`);
+    // 1. Directo con Gemini API si hay clave
+    if (this.hasGeminiApiKey()) {
+      try {
+        const prompt = `
+Genera una sesión didáctica contextualizada (#${nextSessionNumber}) de 50 minutos para:
+- Escuela: ${esc.nombre || "Secundaria"} (${esc.municipio || "Comunidad"})
+- Materia: ${esc.asignatura || "Matemáticas"} (${esc.grado || "2° de Secundaria"})
+- Bloque: ${bloqueInfo.contenidoSintetico}
+- PDA: ${bloqueInfo.pda}
+- Contexto aplicado: ${ctx.nombre} (${ctx.escenario})
+- Enfoque especial docente: ${customPrompt || "Aprendizaje activo con Hoja de Trabajo."}
+`.trim();
+
+        const schema = {
+          type: "OBJECT",
+          properties: {
+            session: {
+              type: "OBJECT",
+              properties: {
+                numero: { type: "INTEGER" },
+                semana: { type: "STRING" },
+                titulo: { type: "STRING" },
+                inicio: { type: "STRING" },
+                desarrollo: { type: "STRING" },
+                cierre: { type: "STRING" },
+                hojaActividad: {
+                  type: "OBJECT",
+                  properties: {
+                    tituloHoja: { type: "STRING" },
+                    instrucciones: { type: "STRING" },
+                    notaTeorica: { type: "STRING" },
+                    ejercicios: {
+                      type: "ARRAY",
+                      items: {
+                        type: "OBJECT",
+                        properties: {
+                          enunciado: { type: "STRING" },
+                          respuesta: { type: "STRING" }
+                        },
+                        required: ["enunciado", "respuesta"]
+                      }
+                    },
+                    boletoSalida: { type: "STRING" }
+                  },
+                  required: ["tituloHoja", "instrucciones", "ejercicios", "boletoSalida"]
+                }
+              },
+              required: ["numero", "titulo", "inicio", "desarrollo", "cierre", "hojaActividad"]
+            }
+          },
+          required: ["session"]
+        };
+
+        const resData = await this.callGeminiDirect(prompt, "Experto en diseño de sesiones NEM.", schema);
+        if (resData?.session) {
+          resData.session.numero = nextSessionNumber;
+          resData.session.semana = bloqueInfo.semanas;
+          if (resData.session.hojaActividad) {
+            resData.session.hojaActividad.diagramType = bloqueInfo.diagramType || this.getDefaultDiagramForSubject(esc.asignatura);
+          }
+          return resData.session;
+        }
+      } catch (err) {
+        console.warn("[AIGenerator]: Gemini Session falló, usando sesión contextual local:", err.message);
+      }
+    } else if (this.isLocalServerEnvironment()) {
+      // 2. Servidor local si está en localhost
+      try {
+        const response = await fetch("/api/generate-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bloqueInfo,
+            contexto: ctx,
+            customPrompt,
+            nextSessionNumber,
+            escuela: esc
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.session) {
+            return data.session;
+          }
+        }
+      } catch (e) {
+        console.warn("[AIGenerator]: Local server error en sesión.");
+      }
     }
-    return data.session;
+
+    // 3. Generador contextual local
+    return this.generateContextualSession(bloqueInfo, contextoKey, customPrompt, nextSessionNumber, esc);
   },
 
   // ==========================================================================
@@ -564,46 +1111,124 @@ window.AIGenerator = {
   // ETAPA 4 (MODALIDAD PROYECTO NEM): Generar Proyecto por Fases / Momentos
   // --------------------------------------------------------------------------
   async generateProyectoForBloque(escuela, diagnostico, bloque, metodologiaId, promptExtra = "") {
-    const metId = metodologiaId || this.getSuggestedMetodologiaId(escuela?.campoFormativo, escuela?.asignatura);
+    const esc = escuela || {};
+    const metId = metodologiaId || this.getSuggestedMetodologiaId(esc.campoFormativo, esc.asignatura);
     const metObj = this.metodologiasNEM[metId] || this.metodologiasNEM.steam;
 
-    try {
-      const response = await fetch("/api/generate-proyecto-bloque", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          escuela,
-          diagnostico,
-          bloque,
-          metodologia: metObj,
-          promptExtra
-        })
-      });
-      const data = await response.json();
-      if (response.ok && data.proyecto && Array.isArray(data.proyecto.fases) && data.proyecto.fases.length > 0) {
-        return {
-          metodologiaId: metObj.id,
-          metodologiaNombre: metObj.nombre,
-          nombreProyecto: data.proyecto.nombreProyecto,
-          problematica: data.proyecto.problematica,
-          proposito: data.proyecto.proposito,
-          productoFinal: data.proyecto.productoFinal,
-          evaluacionFormativa: data.proyecto.evaluacionFormativa || [],
-          fases: data.proyecto.fases.map((f, idx) => ({
-            numero: idx + 1,
-            faseClave: f.faseClave || metObj.fasesOficiales[idx]?.faseClave || `Fase ${idx + 1}`,
-            sesionesEstimadas: f.sesionesEstimadas || "2 sesiones (100 min)",
-            actividades: f.actividades || "",
-            evidencia: f.evidencia || "",
-            recursos: f.recursos || "Cuaderno, pizarrón y hojas de trabajo de la fase",
-            hojaActividad: f.hojaActividad || this.buildDefaultPhaseWorksheet(escuela, bloque, metObj, f, idx + 1)
-          }))
+    // 1. Directo con Gemini API si hay clave
+    if (this.hasGeminiApiKey()) {
+      try {
+        const prompt = `
+Genera un Proyecto Didáctico NEM completo organizado por sus fases/momentos oficiales:
+- Escuela: ${esc.nombre || "Secundaria"} (${esc.municipio || ""})
+- Asignatura: ${esc.asignatura || "Matemáticas"} (${esc.grado || "2° de Secundaria"})
+- Metodología Sociocrítica Oficial: ${metObj.nombre} (${metObj.etiquetaCorta})
+- Bloque curricular: ${bloque.contenidoContextualizado}
+- PDA a lograr: ${bloque.pda}
+- Diagnóstico: ${(diagnostico?.comunidad || "").slice(0, 300)}
+- Indicaciones docente: ${promptExtra || "Diseñar cada fase con actividades del docente, actividades de alumnos, evidencia y hoja de trabajo."}
+`.trim();
+
+        const schema = {
+          type: "OBJECT",
+          properties: {
+            proyecto: {
+              type: "OBJECT",
+              properties: {
+                nombreProyecto: { type: "STRING" },
+                problematica: { type: "STRING" },
+                proposito: { type: "STRING" },
+                productoFinal: { type: "STRING" },
+                evaluacionFormativa: { type: "ARRAY", items: { type: "STRING" } },
+                fases: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      faseClave: { type: "STRING" },
+                      sesionesEstimadas: { type: "STRING" },
+                      actividades: { type: "STRING" },
+                      evidencia: { type: "STRING" },
+                      recursos: { type: "STRING" }
+                    },
+                    required: ["faseClave", "actividades", "evidencia"]
+                  }
+                }
+              },
+              required: ["nombreProyecto", "problematica", "proposito", "productoFinal", "fases"]
+            }
+          },
+          required: ["proyecto"]
         };
+
+        const resData = await this.callGeminiDirect(prompt, "Especialista en proyectos sociocríticos de la NEM.", schema);
+        if (resData?.proyecto && Array.isArray(resData.proyecto.fases) && resData.proyecto.fases.length > 0) {
+          return {
+            metodologiaId: metObj.id,
+            metodologiaNombre: metObj.nombre,
+            nombreProyecto: resData.proyecto.nombreProyecto,
+            problematica: resData.proyecto.problematica,
+            proposito: resData.proyecto.proposito,
+            productoFinal: resData.proyecto.productoFinal,
+            evaluacionFormativa: resData.proyecto.evaluacionFormativa || [],
+            fases: resData.proyecto.fases.map((f, idx) => ({
+              numero: idx + 1,
+              faseClave: f.faseClave || metObj.fasesOficiales[idx]?.faseClave || `Fase ${idx + 1}`,
+              sesionesEstimadas: f.sesionesEstimadas || "2 sesiones (100 min)",
+              actividades: f.actividades || "",
+              evidencia: f.evidencia || "",
+              recursos: f.recursos || "Cuaderno, pizarrón y hojas de trabajo de la fase",
+              hojaActividad: f.hojaActividad || this.buildDefaultPhaseWorksheet(esc, bloque, metObj, f, idx + 1)
+            }))
+          };
+        }
+      } catch (err) {
+        console.warn("[AIGenerator]: Gemini Proyecto falló, usando generador local:", err.message);
       }
-      throw new Error(data.error || "Fallback local proyecto");
-    } catch (e) {
-      return this.generateLocalProyectoForBloque(escuela, bloque, metObj.id, promptExtra);
+    } else if (this.isLocalServerEnvironment()) {
+      // 2. Servidor local si está en localhost
+      try {
+        const response = await fetch("/api/generate-proyecto-bloque", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            escuela: esc,
+            diagnostico,
+            bloque,
+            metodologia: metObj,
+            promptExtra
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.proyecto && Array.isArray(data.proyecto.fases) && data.proyecto.fases.length > 0) {
+            return {
+              metodologiaId: metObj.id,
+              metodologiaNombre: metObj.nombre,
+              nombreProyecto: data.proyecto.nombreProyecto,
+              problematica: data.proyecto.problematica,
+              proposito: data.proyecto.proposito,
+              productoFinal: data.proyecto.productoFinal,
+              evaluacionFormativa: data.proyecto.evaluacionFormativa || [],
+              fases: data.proyecto.fases.map((f, idx) => ({
+                numero: idx + 1,
+                faseClave: f.faseClave || metObj.fasesOficiales[idx]?.faseClave || `Fase ${idx + 1}`,
+                sesionesEstimadas: f.sesionesEstimadas || "2 sesiones (100 min)",
+                actividades: f.actividades || "",
+                evidencia: f.evidencia || "",
+                recursos: f.recursos || "Cuaderno, pizarrón y hojas de trabajo de la fase",
+                hojaActividad: f.hojaActividad || this.buildDefaultPhaseWorksheet(esc, bloque, metObj, f, idx + 1)
+              }))
+            };
+          }
+        }
+      } catch (e) {
+        console.warn("[AIGenerator]: Local server error en proyecto.");
+      }
     }
+
+    // 3. Generador de proyecto local
+    return this.generateLocalProyectoForBloque(esc, bloque, metObj.id, promptExtra);
   },
 
   buildDefaultPhaseWorksheet(escuela, bloque, metObj, faseInfo, numeroFase) {
@@ -672,43 +1297,50 @@ window.AIGenerator = {
   // ETAPA 5 (MODALIDAD PROYECTO NEM): Sincronizar Hojas por Fase/Momento
   // --------------------------------------------------------------------------
   async syncHojasFromProyecto(escuela, bloque, proyecto, fasesTarget, promptExtra = "") {
-    try {
-      const response = await fetch("/api/sync-hojas-from-proyecto", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ escuela, bloque, proyecto, fasesTarget, promptExtra })
-      });
-      const data = await response.json();
-      if (response.ok && Array.isArray(data.hojasPorFase) && data.hojasPorFase.length > 0) {
-        return data.hojasPorFase;
-      }
-      throw new Error(data.error || "Fallback local sync proyecto");
-    } catch (e) {
-      const diag = bloque.diagramType || this.getDefaultDiagramForSubject(escuela?.asignatura);
-      return (fasesTarget || []).map((f) => ({
-        numero: f.numero,
-        hojaActividad: {
-          tituloHoja: `Hoja del Proyecto · ${f.faseClave}`,
-          instrucciones: `Con base en las actividades del proyecto "${proyecto.nombreProyecto}" en "${f.faseClave}", realiza cada actividad para construir la evidencia: ${f.evidencia || "avance de la fase"}.`,
-          notaTeorica: `Síntesis de la Fase: ${(f.actividades || bloque.pda).slice(0, 220)}`,
-          diagramType: f.hojaActividad?.diagramType || diag,
-          ejercicios: [
-            {
-              enunciado: `1. Planteamiento e Indagación (${f.faseClave}): Retomando la problemática del proyecto ("${(proyecto.problematica || "").slice(0, 140)}"), desarrolla el análisis inicial de esta fase.`,
-              respuesta: `Análisis pertinente y alineado con "${f.faseClave}" del proyecto.`
-            },
-            {
-              enunciado: `2. Actividad Central de la Fase: Desarrolla paso a paso las actividades acordadas (${(f.actividades || "").slice(0, 160)}...) aplicando el PDA "${bloque.pda}".`,
-              respuesta: `Procedimiento y desarrollo acordes a las actividades de la fase.`
-            },
-            {
-              enunciado: `3. Construcción de la Evidencia Parcial (${f.evidencia || "Entregable de la fase"}): Registra aquí la conclusión o propuesta que se integrará al producto final (${proyecto.productoFinal || ""}).`,
-              respuesta: `Evidencia parcial completa y fundamentada.`
-            }
-          ],
-          boletoSalida: `Reflexión de "${f.faseClave}": ¿Qué logramos resolver hoy para avanzar hacia nuestro producto final (${proyecto.productoFinal || "Proyecto NEM"})?`
+    const esc = escuela || {};
+
+    if (this.isLocalServerEnvironment() && !this.hasGeminiApiKey()) {
+      try {
+        const response = await fetch("/api/sync-hojas-from-proyecto", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ escuela: esc, bloque, proyecto, fasesTarget, promptExtra })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data?.hojasPorFase) && data.hojasPorFase.length > 0) {
+            return data.hojasPorFase;
+          }
         }
-      }));
+      } catch (e) {
+        console.warn("[AIGenerator]: Local server error en sync hojas proyecto.");
+      }
     }
+
+    const diag = bloque.diagramType || this.getDefaultDiagramForSubject(esc.asignatura);
+    return (fasesTarget || []).map((f) => ({
+      numero: f.numero,
+      hojaActividad: {
+        tituloHoja: `Hoja del Proyecto · ${f.faseClave}`,
+        instrucciones: `Con base en las actividades del proyecto "${proyecto.nombreProyecto}" en "${f.faseClave}", realiza cada actividad para construir la evidencia: ${f.evidencia || "avance de la fase"}.`,
+        notaTeorica: `Síntesis de la Fase: ${(f.actividades || bloque.pda).slice(0, 220)}`,
+        diagramType: f.hojaActividad?.diagramType || diag,
+        ejercicios: [
+          {
+            enunciado: `1. Planteamiento e Indagación (${f.faseClave}): Retomando la problemática del proyecto ("${(proyecto.problematica || "").slice(0, 140)}"), desarrolla el análisis inicial de esta fase.`,
+            respuesta: `Análisis pertinente y alineado con "${f.faseClave}" del proyecto.`
+          },
+          {
+            enunciado: `2. Actividad Central de la Fase: Desarrolla paso a paso las actividades acordadas (${(f.actividades || "").slice(0, 160)}...) aplicando el PDA "${bloque.pda}".`,
+            respuesta: `Procedimiento y desarrollo acordes a las actividades de la fase.`
+          },
+          {
+            enunciado: `3. Construcción de la Evidencia Parcial (${f.evidencia || "Entregable de la fase"}): Registra aquí la conclusión o propuesta que se integrará al producto final (${proyecto.productoFinal || ""}).`,
+            respuesta: `Evidencia parcial completa y fundamentada.`
+          }
+        ],
+        boletoSalida: `Reflexión de "${f.faseClave}": ¿Qué logramos resolver hoy para avanzar hacia nuestro producto final (${proyecto.productoFinal || "Proyecto NEM"})?`
+      }
+    }));
   }
 };

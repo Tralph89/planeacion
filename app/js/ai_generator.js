@@ -46,70 +46,100 @@ window.AIGenerator = {
       throw new Error("No hay API Key configurada para Gemini.");
     }
 
-    const model = "gemini-2.5-flash";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const candidateModels = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+    let lastError = null;
 
-    const parts = [];
-    if (inlineData) {
-      parts.push({
-        inlineData: {
-          mimeType: inlineData.mimeType || "application/pdf",
-          data: inlineData.data
-        }
-      });
-    }
-    parts.push({ text: promptText });
-
-    const body = {
-      contents: [{ role: "user", parts }],
-      generationConfig: {
-        temperature: 0.4
-      }
-    };
-
-    if (systemInstruction) {
-      body.systemInstruction = {
-        parts: [{ text: systemInstruction }]
-      };
-    }
-
-    if (responseSchema) {
-      body.generationConfig.responseMimeType = "application/json";
-      body.generationConfig.responseSchema = responseSchema;
-    }
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-      let errorMsg = `Error de Gemini API (${res.status})`;
+    for (const model of candidateModels) {
       try {
-        const errJson = await res.json();
-        if (errJson?.error?.message) {
-          errorMsg = errJson.error.message;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+        const parts = [];
+        if (inlineData) {
+          parts.push({
+            inlineData: {
+              mimeType: inlineData.mimeType || "application/pdf",
+              data: inlineData.data
+            }
+          });
         }
-      } catch (e) {}
-      throw new Error(errorMsg);
-    }
+        parts.push({ text: promptText });
 
-    const resJson = await res.json();
-    const candidateText = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!candidateText) {
-      throw new Error("Respuesta vacía de Gemini.");
-    }
+        const body = {
+          contents: [{ role: "user", parts }],
+          generationConfig: {
+            temperature: 0.4
+          }
+        };
 
-    if (responseSchema) {
-      try {
-        return JSON.parse(candidateText);
+        if (systemInstruction) {
+          body.systemInstruction = {
+            parts: [{ text: systemInstruction }]
+          };
+        }
+
+        if (responseSchema) {
+          body.generationConfig.responseMimeType = "application/json";
+          body.generationConfig.responseSchema = responseSchema;
+        }
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+          let errorMsg = `Error de Gemini API (${res.status})`;
+          try {
+            const errJson = await res.json();
+            if (errJson?.error?.message) {
+              errorMsg = errJson.error.message;
+            }
+          } catch (e) {}
+
+          // Si el modelo específico no está disponible, intentar con el siguiente modelo de la lista
+          if (
+            errorMsg.includes("no longer available") ||
+            errorMsg.includes("not found") ||
+            errorMsg.includes("unsupported") ||
+            res.status === 404
+          ) {
+            lastError = new Error(errorMsg);
+            continue;
+          }
+          throw new Error(errorMsg);
+        }
+
+        const resJson = await res.json();
+        const candidateText = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!candidateText) {
+          throw new Error("Respuesta vacía de Gemini.");
+        }
+
+        if (responseSchema) {
+          try {
+            return JSON.parse(candidateText);
+          } catch (err) {
+            const clean = candidateText.replace(/```json/gi, "").replace(/```/g, "").trim();
+            return JSON.parse(clean);
+          }
+        }
+        return candidateText;
       } catch (err) {
-        const clean = candidateText.replace(/```json/gi, "").replace(/```/g, "").trim();
-        return JSON.parse(clean);
+        if (
+          err.message &&
+          (err.message.includes("no longer available") ||
+            err.message.includes("not found") ||
+            err.message.includes("unsupported"))
+        ) {
+          lastError = err;
+          continue;
+        }
+        throw err;
       }
     }
-    return candidateText;
+
+    throw lastError || new Error("No se pudo conectar con ningún modelo de Gemini.");
   },
 
   contextosGuaymas: {

@@ -46,7 +46,7 @@ window.AIGenerator = {
       throw new Error("No hay API Key configurada para Gemini.");
     }
 
-    const candidateModels = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+    const candidateModels = ["gemini-3.8-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
     let lastError = null;
 
     for (const model of candidateModels) {
@@ -97,13 +97,29 @@ window.AIGenerator = {
             }
           } catch (e) {}
 
-          // Si el modelo específico no está disponible, intentar con el siguiente modelo de la lista
-          if (
-            errorMsg.includes("no longer available") ||
-            errorMsg.includes("not found") ||
-            errorMsg.includes("unsupported") ||
-            res.status === 404
-          ) {
+          const lowerMsg = errorMsg.toLowerCase();
+          const isRetryableError =
+            res.status === 503 ||
+            res.status === 429 ||
+            res.status === 500 ||
+            res.status === 502 ||
+            res.status === 504 ||
+            res.status === 404 ||
+            lowerMsg.includes("high demand") ||
+            lowerMsg.includes("spikes in demand") ||
+            lowerMsg.includes("temporary") ||
+            lowerMsg.includes("try again later") ||
+            lowerMsg.includes("overloaded") ||
+            lowerMsg.includes("no longer available") ||
+            lowerMsg.includes("not found") ||
+            lowerMsg.includes("unsupported") ||
+            lowerMsg.includes("resource has been exhausted") ||
+            lowerMsg.includes("quota");
+
+          if (isRetryableError) {
+            console.warn(
+              `[AIGenerator]: Modelo ${model} no disponible (${res.status}: ${errorMsg.slice(0, 90)}...). Probando siguiente modelo de respaldo...`
+            );
             lastError = new Error(errorMsg);
             continue;
           }
@@ -126,12 +142,24 @@ window.AIGenerator = {
         }
         return candidateText;
       } catch (err) {
-        if (
-          err.message &&
-          (err.message.includes("no longer available") ||
-            err.message.includes("not found") ||
-            err.message.includes("unsupported"))
-        ) {
+        const msg = (err.message || "").toLowerCase();
+        const isRetryable =
+          msg.includes("high demand") ||
+          msg.includes("spikes in demand") ||
+          msg.includes("temporary") ||
+          msg.includes("try again later") ||
+          msg.includes("no longer available") ||
+          msg.includes("not found") ||
+          msg.includes("unsupported") ||
+          msg.includes("quota") ||
+          msg.includes("503") ||
+          msg.includes("429") ||
+          msg.includes("500");
+
+        if (isRetryable) {
+          console.warn(
+            `[AIGenerator]: Error en modelo ${model} (${err.message.slice(0, 90)}...). Probando siguiente modelo...`
+          );
           lastError = err;
           continue;
         }

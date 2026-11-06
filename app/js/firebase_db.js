@@ -109,19 +109,9 @@ window.FirebaseDB = {
 
   async _doInit() {
     try {
-      let firebaseConfig = null;
-      try {
-        const res = await fetch("/firebase-applet-config.json");
-        if (res.ok) {
-          firebaseConfig = await res.json();
-        }
-      } catch (fetchErr) {
-        console.warn("No se pudo cargar /firebase-applet-config.json, usando configuración integrada:", fetchErr);
-      }
-
-      if (!firebaseConfig) {
-        firebaseConfig = DEFAULT_FIREBASE_CONFIG;
-      }
+      const firebaseConfig =
+        (typeof window !== "undefined" && window.__FIREBASE_CONFIG__) ||
+        DEFAULT_FIREBASE_CONFIG;
 
       const app = initializeApp(firebaseConfig);
 

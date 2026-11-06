@@ -133,6 +133,291 @@ window.CatalogoSinteticoNEM = {
   // Contenidos y PDAs oficiales completos por disciplina (SEP Fase 6 y Fases 2-5)
   contenidosPorMateria: {
     // =========================================================================
+    // MATEMÁTICAS 1° (FASE 6 - 14 CONTENIDOS OFICIALES COMPLETOS SEP)
+    // =========================================================================
+    matematicas_1: [
+      {
+        contenido: "1. Expresión de fracciones como decimales y de decimales como fracciones.",
+        pda: "Usa diversas estrategias al convertir números fraccionarios a decimales y viceversa.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 2,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "2. Extensión de los números a positivos y negativos y su orden.",
+        pda: "Reconoce la necesidad de los números negativos a partir de usar cantidades que tienen al cero como referencia. Compara y ordena números con signo (enteros, fracciones y decimales) en la recta numérica y analiza en qué casos se cumple la propiedad de densidad.",
+        ejesSugeridos: "Pensamiento crítico e Inclusión",
+        semanasSugeridas: 3,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "3. Extensión del significado de las operaciones y sus relaciones inversas.",
+        pda: "Reconoce el significado de las cuatro operaciones básicas y sus relaciones inversas al resolver problemas que impliquen el uso de números con signo. Comprueba y argumenta si cada una de estas operaciones cumple las propiedades conmutativa, asociativa y distributiva. Identifica y aplica la jerarquía de operaciones y símbolos de agrupación al realizar cálculos.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "4. Regularidades y Patrones.",
+        pda: "Representa algebraicamente una sucesión con progresión aritmética de figuras y números.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 2,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "5. Introducción al álgebra.",
+        pda: "Interpreta y plantea diversas situaciones del lenguaje común al lenguaje algebraico y viceversa. Representa algebraicamente perímetros de figuras.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "6. Ecuaciones lineales y cuadráticas.",
+        pda: "Resuelve ecuaciones de la forma Ax=B, Ax+B=C, Ax+B=Cx+D con el uso de las propiedades de la igualdad. Modela y resuelve problemas cuyo planteamiento es una ecuación lineal. Resuelve problemas de porcentajes en diversas situaciones.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "7. Funciones y proporcionalidad.",
+        pda: "Relaciona e interpreta relaciones proporcional y no proporcional a partir de su representación tabular, gráfica y con diagramas. Modela y resuelve diversas situaciones a través de ecuaciones proporcionales con constante positiva y negativa.",
+        ejesSugeridos: "Pensamiento crítico e Interculturalidad crítica",
+        semanasSugeridas: 3,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "8. Rectas y ángulos.",
+        pda: "Explora las figuras básicas como rectas y ángulos y su notación. Encuentra y calcula los ángulos que se forman al intersecar dos segmentos.",
+        ejesSugeridos: "Pensamiento crítico y Artes y experiencias estéticas",
+        semanasSugeridas: 2,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "9. Construcción y propiedades de las figuras planas y cuerpos.",
+        pda: "Utiliza la regla y el compás para trazar: punto medio, mediatriz de un segmento, segmentos y ángulos congruentes, bisectriz de un ángulo, rectas perpendiculares y rectas paralelas. Identifica y traza las rectas notables en triángulos y cuadriláteros. Construye y clasifica triángulos y cuadriláteros a partir del análisis de distinta información.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "10. Circunferencia, círculo y esfera.",
+        pda: "Identifica y traza las rectas notables en la circunferencia y las relaciones entre ellas. Investiga figuras relacionadas con círculos y propiedades de los círculos. Construye circunferencias a partir de distinta información. Verifica los criterios de existencia y unicidad de estas figuras.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 2,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "11. Medición y cálculo en diferentes contextos.",
+        pda: "Introduce la idea de distancia entre dos puntos como la longitud del segmento que los une. Encuentra la distancia de un punto a una recta y la distancia entre dos rectas paralelas. Explora la desigualdad del triángulo. Obtiene y aplica fórmulas o usa otras estrategias para calcular el perímetro y el área de polígonos regulares e irregulares y del círculo.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 3
+      },
+      {
+        contenido: "12. Obtención y representación de información.",
+        pda: "Usa tablas, gráficas de barras y circulares para el análisis de información.",
+        ejesSugeridos: "Pensamiento crítico e Inclusión",
+        semanasSugeridas: 2,
+        trimestreSugerido: 3
+      },
+      {
+        contenido: "13. Interpretación de la información a través de medidas de tendencia central y de dispersión.",
+        pda: "Determina e interpreta la frecuencia absoluta, la frecuencia relativa, la media, la mediana y la moda en un conjunto de datos. Usa e interpreta las medidas de tendencia central (moda, media aritmética y mediana) y el rango de un conjunto de datos, y justifica con base en ellas sus decisiones.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 3
+      },
+      {
+        contenido: "14. Azar y probabilidad.",
+        pda: "Compara cualitativamente dos o más eventos a partir de sus resultados posibles, usa relaciones como: “es más probable que…”, “es menos probable que…”. Identifica eventos en los que interviene el azar, determina el espacio muestral y experimenta. Identifica diversos procedimientos de conteo y resuelve problemas.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 2,
+        trimestreSugerido: 3
+      }
+    ],
+
+    // =========================================================================
+    // MATEMÁTICAS 2° (FASE 6 - 12 CONTENIDOS OFICIALES COMPLETOS SEP)
+    // =========================================================================
+    matematicas_2: [
+      {
+        contenido: "1. Extensión del significado de las operaciones y sus relaciones inversas.",
+        pda: "Usa criterios de divisibilidad y números primos al resolver problemas que implican calcular el máximo común divisor y el mínimo común múltiplo. Calcula potencias con exponente entero y la raíz cuadrada. Usa la notación científica al realizar cálculos con cantidades muy grandes o muy pequeñas.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "2. Regularidades y Patrones.",
+        pda: "Representa algebraicamente una sucesión con progresión cuadrática de figuras y números.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 2,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "3. Introducción al álgebra.",
+        pda: "Representa algebraicamente áreas que generan una expresión cuadrática. Identifica y usa las propiedades de los exponentes al resolver distintas operaciones algebraicas.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "4. Ecuaciones lineales y cuadráticas.",
+        pda: "Resuelve desigualdades con expresiones algebraicas. Modela y soluciona sistemas de dos ecuaciones lineales con dos incógnitas por algún método para dar respuesta a un problema.",
+        ejesSugeridos: "Pensamiento crítico e Inclusión",
+        semanasSugeridas: 3,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "5. Funciones y proporcionalidad inversa.",
+        pda: "Relaciona e interpreta la proporcionalidad inversa de dos magnitudes o cantidades, además usa una tabla, gráfica o representación algebraica en diversos contextos.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 2,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "6. Rectas y ángulos.",
+        pda: "Identifica y usa las relaciones entre los ángulos, lados y diagonales para construir a escala triángulos, cuadriláteros y polígonos regulares o irregulares.",
+        ejesSugeridos: "Pensamiento crítico y Artes y experiencias estéticas",
+        semanasSugeridas: 2,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "7. Construcción y propiedades de las figuras planas y cuerpos.",
+        pda: "Construye con regla y compás polígonos regulares con distinta información. Identifica y usa las relaciones entre figuras en la construcción de teselados.",
+        ejesSugeridos: "Pensamiento crítico y Artes y experiencias estéticas",
+        semanasSugeridas: 3,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "8. Circunferencia, círculo y esfera.",
+        pda: "Determina la medida de ángulos inscritos y centrales, así como de arcos de circunferencia. Explora las intersecciones entre círculos y figuras al calcular perímetros y áreas.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 2,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "9. Medición y cálculo en diferentes contextos.",
+        pda: "Resuelve problemas que implican conversiones en múltiplos y submúltiplos del metro, litro, kilogramo y de unidades del sistema inglés (yarda, pulgada, galón, onza y libra). Utiliza estrategias diversas para determinar el perímetro y el área de figuras compuestas. Calcula el volumen de prismas y pirámides.",
+        ejesSugeridos: "Pensamiento crítico e Interculturalidad crítica",
+        semanasSugeridas: 3,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "10. Obtención y representación de información.",
+        pda: "Recolecta, registra, lee y comunica información mediante histogramas, gráficas poligonales y de línea.",
+        ejesSugeridos: "Pensamiento crítico e Inclusión",
+        semanasSugeridas: 2,
+        trimestreSugerido: 3
+      },
+      {
+        contenido: "11. Interpretación de la información a través de medidas de tendencia central y de dispersión.",
+        pda: "Usa e interpreta las medidas de tendencia central (moda, media aritmética y mediana) y de dispersión (rango y la desviación media) de un conjunto de datos, y justifica con base en ellas sus decisiones. Identifica tendencias en los datos centrándose en sus valores representativos y sus variaciones.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 3
+      },
+      {
+        contenido: "12. Azar y probabilidad.",
+        pda: "Realiza experimentos aleatorios y registra los resultados en una tabla de frecuencia como la transición de la probabilidad frecuencial a la teórica. Analiza las características de la medida de la probabilidad y su equivalencia y representación en números decimales, fraccionarios y porcentajes.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 3
+      }
+    ],
+
+    // =========================================================================
+    // MATEMÁTICAS 3° (FASE 6 - 12 CONTENIDOS OFICIALES COMPLETOS SEP)
+    // =========================================================================
+    matematicas_3: [
+      {
+        contenido: "1. Introducción al álgebra.",
+        pda: "Representa algebraicamente áreas y volúmenes de cuerpos geométricos y calcula el valor de una variable en función de las otras.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "2. Ecuaciones lineales y cuadráticas.",
+        pda: "Resuelve ecuaciones de la forma Ax² + Bx + C = 0 por factorización y fórmula general. Resuelve problemas cuyo planteamiento es una ecuación cuadrática.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "3. Funciones.",
+        pda: "Relaciona e interpreta la variación de dos cantidades a partir de su representación tabular, gráfica y algebraica en diferentes contextos. Explora diversos procedimientos para resolver problemas de reparto proporcional.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "4. Construcción y propiedades de las figuras planas y cuerpos.",
+        pda: "Aplica las propiedades de la congruencia y semejanza de triángulos al construir y resolver problemas. Reconoce las propiedades de los sólidos. Explora la generación de sólidos de revolución a partir de figuras planas. Explora y construye desarrollos planos de diferentes figuras tridimensionales, cilindros, pirámides y conos.",
+        ejesSugeridos: "Pensamiento crítico y Artes y experiencias estéticas",
+        semanasSugeridas: 3,
+        trimestreSugerido: 1
+      },
+      {
+        contenido: "5. Circunferencia, círculo y esfera.",
+        pda: "Explora y construye desarrollos planos de esferas. Indaga la generación de esferas a partir de figuras planas. Encuentra relaciones de volumen de la esfera, el cono y el cilindro.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 2,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "6. Medición y cálculo en diferentes contextos.",
+        pda: "Usa diferentes estrategias para calcular el volumen de prismas, pirámides y cilindros. Formula, justifica y usa el teorema de Pitágoras al resolver problemas. Resuelve problemas utilizando las razones trigonométricas seno, coseno y tangente.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "7. Criterios de congruencia y semejanza de triángulos.",
+        pda: "Resuelve problemas que implican aplicar las propiedades de congruencia y semejanza en diversos contextos y construcciones geométricas.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 2,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "8. Teorema de Tales y proporcionalidad geométrica.",
+        pda: "Aplica el teorema de Tales para resolver problemas geométricos y situaciones de la vida cotidiana.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 2,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "9. Homotecia y transformaciones geométricas.",
+        pda: "Aplica las propiedades de la homotecia en figuras planas y resuelve problemas de ampliación y reducción a escala.",
+        ejesSugeridos: "Pensamiento crítico y Artes y experiencias estéticas",
+        semanasSugeridas: 2,
+        trimestreSugerido: 2
+      },
+      {
+        contenido: "10. Obtención y representación de información.",
+        pda: "Lee, interpreta y comunica información de cualquier tipo de gráficas estadísticas para el análisis de problemáticas socioeducativas.",
+        ejesSugeridos: "Pensamiento crítico e Inclusión",
+        semanasSugeridas: 2,
+        trimestreSugerido: 3
+      },
+      {
+        contenido: "11. Interpretación de la información a través de medidas de tendencia central y de dispersión.",
+        pda: "Determina y compara las medidas de tendencia central (media, mediana y moda) y de dispersión (rango y desviación media) de dos conjuntos de datos para tomar decisiones.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 3
+      },
+      {
+        contenido: "12. Azar y probabilidad.",
+        pda: "Resuelve problemas donde se analicen las características de eventos complementarios y eventos mutuamente excluyentes e independientes. Resuelve problemas donde se calcule la probabilidad de ocurrencia de dos eventos mutuamente excluyentes y de eventos complementarios (regla de la suma). Resuelve problemas donde se calcule la probabilidad de ocurrencia de dos eventos independientes (regla del producto). Indaga las condiciones necesarias para que un juego de azar sea justo, con base en la noción de resultados equiprobables y no equiprobables.",
+        ejesSugeridos: "Pensamiento crítico",
+        semanasSugeridas: 3,
+        trimestreSugerido: 3
+      }
+    ],
+
+    matematicas: [], // Alias dinámico resuelto por grado
+    // =========================================================================
     // GEOGRAFÍA (FASE 6 - 14 CONTENIDOS OFICIALES COMPLETOS SEP)
     // =========================================================================
     geografia: [
@@ -1442,17 +1727,32 @@ window.CatalogoSinteticoNEM = {
     ]
   },
 
-  // Detecta el ID de materia del catálogo a partir de materiaId o del nombre de la asignatura
-  resolveMateriaId(materiaId, asignaturaNombre = "") {
-    if (materiaId && this.contenidosPorMateria[materiaId]) {
-      return materiaId;
-    }
-    if (materiaId === "matematicas") return "matematicas";
-
+  // Detecta el ID de materia del catálogo a partir de materiaId, nombre de asignatura o grado
+  resolveMateriaId(materiaId, asignaturaNombre = "", gradoNombre = "") {
     const norm = String(asignaturaNombre || materiaId || "")
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+      .replace(/[̀-ͯ]/g, "");
+
+    const normGrado = String(gradoNombre || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "");
+
+    // Si es matemáticas, distinguir con precisión el grado oficial
+    if (materiaId === "matematicas" || norm.includes("matematic")) {
+      if (norm.includes("2") || norm.includes("segundo") || normGrado.includes("2") || normGrado.includes("segundo")) {
+        return "matematicas_2";
+      }
+      if (norm.includes("1") || norm.includes("primer") || normGrado.includes("1") || normGrado.includes("primer")) {
+        return "matematicas_1";
+      }
+      return "matematicas_3";
+    }
+
+    if (materiaId && this.contenidosPorMateria[materiaId]) {
+      return materiaId;
+    }
 
     if (norm.includes("geograf")) return "geografia";
     if (norm.includes("espanol") || norm.includes("lengua materna")) return "espanol";
@@ -1465,7 +1765,6 @@ window.CatalogoSinteticoNEM = {
     if (norm.includes("arte")) return "artes";
     if (norm.includes("tecnolog")) return "tecnologia";
     if (norm.includes("educacion fisica")) return "educacion_fisica";
-    if (norm.includes("matematic")) return "matematicas";
     if (norm.includes("preescolar")) return "preescolar_integrado";
     if (norm.includes("saberes y pensamiento")) return "primaria_spc";
     if (norm.includes("etica, naturaleza")) return "primaria_ens";
@@ -1477,10 +1776,14 @@ window.CatalogoSinteticoNEM = {
 
   // Devuelve todos los Contenidos y PDAs oficiales para cualquier materia seleccionada
   getContenidosForMateria(materiaId, gradoNombre = "3° de Secundaria", asignaturaNombre = "") {
-    const resolvedId = this.resolveMateriaId(materiaId, asignaturaNombre);
+    const resolvedId = this.resolveMateriaId(materiaId, asignaturaNombre, gradoNombre);
 
-    if (resolvedId === "matematicas" && window.ProgramaAnaliticoData) {
-      // Extraer los contenidos sintéticos oficiales del programa de Matemáticas
+    // Si es Matemáticas 3° y está activo el proyecto base predeterminado de Matemáticas 3°, usar su desglose analítico enriquecido
+    if (
+      resolvedId === "matematicas_3" &&
+      (!gradoNombre || gradoNombre.includes("3") || String(asignaturaNombre).includes("3")) &&
+      window.ProgramaAnaliticoData?.bloquesCurriculares
+    ) {
       return window.ProgramaAnaliticoData.bloquesCurriculares
         .filter((b) => b.trimestre <= 3)
         .map((b, idx) => ({
@@ -1494,7 +1797,9 @@ window.CatalogoSinteticoNEM = {
         }));
     }
 
-    const baseList = this.contenidosPorMateria[resolvedId] || [
+    // Contenidos oficiales del catálogo por materia y grado
+    const baseList = this.contenidosPorMateria[resolvedId] ||
+      (resolvedId.startsWith("matematicas") ? this.contenidosPorMateria.matematicas_2 : null) || [
       {
         contenido: `1. Fundamentos disciplinares de ${asignaturaNombre || gradoNombre} y su relación con la comunidad.`,
         pda: `Comprende y aplica los conceptos esenciales de la disciplina en ${gradoNombre} para analizar situaciones reales de su escuela y localidad.`,

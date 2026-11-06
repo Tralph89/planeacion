@@ -115,7 +115,8 @@ window.AppController = {
 
       const resolvedId = window.CatalogoSinteticoNEM.resolveMateriaId(
         course.escuela.materiaId,
-        course.escuela.asignatura
+        course.escuela.asignatura,
+        course.escuela.grado
       );
       const officialList = window.CatalogoSinteticoNEM.getContenidosForMateria(
         resolvedId,
@@ -124,7 +125,12 @@ window.AppController = {
       );
 
       const currentSinteticos = course.contenidosSinteticos || [];
-      if (officialList.length > 6 && currentSinteticos.length <= 6) {
+      const needsMat2Upgrade =
+        resolvedId === "matematicas_2" &&
+        (currentSinteticos.length === 0 ||
+          currentSinteticos.some((c) => (c.pda || "").includes("Ax²") || (c.contenido || "").includes("Pitágoras")));
+
+      if ((officialList.length > 6 && currentSinteticos.length <= 6) || needsMat2Upgrade) {
         course.escuela.materiaId = resolvedId;
         course.contenidosSinteticos = officialList;
 
@@ -299,78 +305,197 @@ window.AppController = {
     );
   },
 
+  openNewCourseModal() {
+    const backdrop = document.getElementById("newCourseModalBackdrop");
+    const faseSelect = document.getElementById("newCourseFase");
+    const gradoSelect = document.getElementById("newCourseGrado");
+    const materiaSelect = document.getElementById("newCourseMateria");
+    const gruposInput = document.getElementById("newCourseGrupos");
+    const turnoSelect = document.getElementById("newCourseTurno");
+
+    if (!backdrop || !faseSelect || !gradoSelect || !materiaSelect) {
+      this.createNewCourseInteractive();
+      return;
+    }
+
+    const fases = window.CatalogoSinteticoNEM.fases;
+    faseSelect.innerHTML = fases
+      .map((f) => `<option value="${f.id}" ${f.id === "Fase 6" ? "selected" : ""}>${f.nombre}</option>`)
+      .join("");
+
+    this.updateNewCourseModalGradoAndMateria("Fase 6");
+
+    if (gruposInput) {
+      gruposInput.value = this.state.escuela?.grupos || "2°A, 2°B";
+    }
+    if (turnoSelect) {
+      turnoSelect.value = this.state.escuela?.turno || "Vespertino";
+    }
+
+    backdrop.style.display = "flex";
+  },
+
+  closeNewCourseModal() {
+    const backdrop = document.getElementById("newCourseModalBackdrop");
+    if (backdrop) backdrop.style.display = "none";
+  },
+
+  handleNewCourseModalFaseChange(faseId) {
+    this.updateNewCourseModalGradoAndMateria(faseId);
+  },
+
+  updateNewCourseModalGradoAndMateria(faseId) {
+    const fases = window.CatalogoSinteticoNEM.fases;
+    const fObj = fases.find((f) => f.id === faseId) || fases[0];
+    const gradoSelect = document.getElementById("newCourseGrado");
+    const materiaSelect = document.getElementById("newCourseMateria");
+
+    if (gradoSelect) {
+      gradoSelect.innerHTML = fObj.grados
+        .map((g) => `<option value="${g}" ${g.includes("2") ? "selected" : ""}>${g}</option>`)
+        .join("");
+    }
+    if (materiaSelect) {
+      materiaSelect.innerHTML = fObj.materias
+        .map((m) => `<option value="${m.id}" ${m.id === "matematicas" ? "selected" : ""}>${m.nombre} (${m.campoFormativo})</option>`)
+        .join("");
+    }
+  },
+
+  confirmCreateNewCourse() {
+    const faseSelect = document.getElementById("newCourseFase");
+    const gradoSelect = document.getElementById("newCourseGrado");
+    const materiaSelect = document.getElementById("newCourseMateria");
+    const gruposInput = document.getElementById("newCourseGrupos");
+    const turnoSelect = document.getElementById("newCourseTurno");
+
+    const fase = faseSelect ? faseSelect.value : "Fase 6";
+    const grado = gradoSelect ? gradoSelect.value : "2° de Secundaria";
+    const materiaId = materiaSelect ? materiaSelect.value : "matematicas";
+    const grupos = gruposInput ? gruposInput.value.trim() || "A, B" : "A, B";
+    const turno = turnoSelect ? turnoSelect.value : "Vespertino";
+
+    const fases = window.CatalogoSinteticoNEM.fases;
+    const fObj = fases.find((f) => f.id === fase) || fases[0];
+    const mObj = fObj.materias.find((m) => m.id === materiaId);
+
+    const asignatura = mObj ? mObj.nombre : "Matemáticas";
+    const campoFormativo = mObj ? mObj.campoFormativo : "Saberes y Pensamiento Científico";
+
+    this.closeNewCourseModal();
+
+    this.createNewCourseWithConfig({
+      fase,
+      grado,
+      materiaId,
+      asignatura,
+      campoFormativo,
+      grupos,
+      turno
+    });
+  },
+
   createNewCourseInteractive() {
+    this.openNewCourseModal();
+  },
+
+  createNewCourseWithConfig(config = {}) {
     if (this.state.editMode) {
       this.flushAllEditableFields();
     }
     const baseEsc = this.state.escuela || {};
     const newId = `curso_${Date.now()}`;
 
+    const fase = config.fase || "Fase 6";
+    const grado = config.grado || "2° de Secundaria";
+    const materiaId = config.materiaId || "matematicas";
+    const asignatura = config.asignatura || "Matemáticas";
+    const campoFormativo = config.campoFormativo || "Saberes y Pensamiento Científico";
+    const grupos = config.grupos || "2°A, 2°B";
+    const turno = config.turno || "Vespertino";
+    const nombreEsc = baseEsc.nombre || "Escuela Secundaria General Abelardo L. Rodríguez";
+    const cct = baseEsc.cct || "26DES0010E";
+    const docente = baseEsc.docente || "Prof. José Rafael Leyva García";
+    const municipio = baseEsc.municipio || "Guaymas, Sonora";
+    const cicloEscolar = baseEsc.cicloEscolar || "2025-2026";
+
+    const resolvedMateriaId = window.CatalogoSinteticoNEM.resolveMateriaId(
+      materiaId,
+      asignatura,
+      grado
+    );
+
+    const officialContents = window.CatalogoSinteticoNEM.getContenidosForMateria(
+      resolvedMateriaId,
+      grado,
+      asignatura
+    );
+
     const nuevaEscuela = {
-      nombre: baseEsc.nombre || "Escuela Secundaria General Abelardo L. Rodríguez",
-      cct: baseEsc.cct || "26DES0010E",
-      docente: baseEsc.docente || "Prof. José Rafael Leyva García",
-      turno: baseEsc.turno || "Vespertino",
-      fase: "Fase 6",
-      grado: "Grado por definir",
-      grupos: "Grupos por definir",
-      campoFormativo: "Campo Formativo por definir",
-      materiaId: "",
-      asignatura: "Nueva Materia (Por definir)",
-      municipio: baseEsc.municipio || "Guaymas, Sonora",
-      cicloEscolar: baseEsc.cicloEscolar || "2025-2026"
+      nombre: nombreEsc,
+      cct,
+      docente,
+      turno,
+      fase,
+      grado,
+      grupos,
+      campoFormativo,
+      materiaId: resolvedMateriaId,
+      asignatura,
+      municipio,
+      cicloEscolar
     };
 
     const diagnostico = {
-      comunidad:
-        "Pendiente de configurar: Selecciona y guarda los datos de Escuela, Docente, Grado y Materia en el Paso 1A para generar el Diagnóstico Socioeducativo.",
+      comunidad: `La escuela ${nombreEsc} (CCT ${cct}), ubicada en ${municipio}, atiende a los grupos ${grupos} del turno ${turno} en ${grado} (${fase}). El contexto sociocultural y productivo de la localidad permite vincular los Procesos de Desarrollo de Aprendizaje (PDA) de ${asignatura} (${campoFormativo}) con situaciones reales de los estudiantes.`,
       areasPrioritarias: [
         {
-          titulo: "1. Área Prioritaria por Definir",
-          descripcion: "Se actualizará automáticamente al guardar los datos de la materia y grado en el Paso 1A."
+          titulo: `1. Dominio de PDAs en ${asignatura}`,
+          descripcion: `Fortalecer las habilidades fundamentales de ${asignatura} en ${grado} mediante actividades contextualizadas.`
         },
         {
           titulo: "2. Comprensión, Análisis y Pensamiento Crítico",
-          descripcion: "Se contextualizará de acuerdo con la disciplina y el municipio seleccionados."
+          descripcion: "Impulsar el análisis de información, la argumentación y la resolución colaborativa de problemas cotidianos."
         },
         {
           titulo: "3. Vinculación Comunitaria y Evaluación Formativa",
-          descripcion: "Se adaptará a las características de los grupos que atiendes."
+          descripcion: `Relacionar cada secuencia con retos reales del entorno escolar en ${municipio}.`
         }
       ]
     };
 
-    const bloqueGenerico = {
-      id: "B01",
-      trimestre: 1,
-      semanas: "Semana 1",
-      numSemanas: 1,
-      numSesiones: 5,
-      periodoSugerido: `Ciclo Escolar ${nuevaEscuela.cicloEscolar}`,
-      contenidoSintetico: "Pendiente de definir Materia y Programa Sintético en el Paso 1",
-      contenidoContextualizado: "Configura y guarda los datos de Escuela, Docente y Materia en el Paso 1A",
-      pda: "Selecciona la materia y guarda los datos en el Paso 1A para cargar sus Procesos de Desarrollo de Aprendizaje (PDA).",
-      justificacion: "Pendiente de contextualización.",
-      ejesArticuladores: "Pensamiento crítico",
-      diagramType: "concept_map"
-    };
+    const bloquesIniciales = window.AIGenerator.normalizeBloquesAnalitico(
+      officialContents.map((c, idx) => ({
+        trimestre: c.trimestreSugerido || ((idx % 3) + 1),
+        semanas: `Semanas ${idx * 2 + 1} y ${idx * 2 + 2}`,
+        numSemanas: c.semanasSugeridas || 2,
+        numSesiones: (c.semanasSugeridas || 2) * 5,
+        contenidoSintetico: c.contenido,
+        contenidoContextualizado: `${c.contenido} (Contextualizado en ${municipio})`,
+        pda: c.pda,
+        justificacion: `Contextualizado para responder a las características y necesidades de los grupos ${grupos}.`,
+        ejesArticuladores: c.ejesSugeridos
+      })),
+      nuevaEscuela
+    );
 
-    const planesIniciales = {
-      B01: window.AIGenerator.generateLocalPlanForBloque(nuevaEscuela, bloqueGenerico)
-    };
+    const planesIniciales = {};
+    bloquesIniciales.forEach((b) => {
+      planesIniciales[b.id] = window.AIGenerator.generateLocalPlanForBloque(nuevaEscuela, b);
+    });
 
     this.state.coursesDB[newId] = {
       id: newId,
-      isPendingSetup: true,
-      nombreCurso: "Nueva Materia (Pendiente de guardar datos)",
-      pdfFileName: "Pendiente de seleccionar Materia o subir PDF",
+      isPendingSetup: false,
+      nombreCurso: `${asignatura} · ${grado} (${nombreEsc})`,
+      pdfFileName: `Catálogo Oficial NEM (${asignatura} - ${officialContents.length} Contenidos)`,
       escuela: nuevaEscuela,
       diagnostico,
-      contenidosSinteticos: [],
+      contenidosSinteticos: officialContents,
       vinculacion: JSON.parse(
         JSON.stringify(window.ProgramaAnaliticoData.vinculacionTransversalDefault)
       ),
-      bloquesDB: [bloqueGenerico],
+      bloquesDB: bloquesIniciales,
       planesDB: planesIniciales
     };
 
@@ -380,9 +505,15 @@ window.AppController = {
     this.saveStateToStorage();
     this.renderCourseSelector();
     this.renderSidebar();
+    this.renderMainView();
     this.switchSubView("sintetico");
+
+    if (window.FirebaseDB && window.FirebaseDB.user) {
+      window.FirebaseDB.saveCourseToCloud(this.state.coursesDB[newId]).catch(() => {});
+    }
+
     this.showToast(
-      "Nueva materia en blanco creada. Selecciona la Escuela, Docente, Grado y Materia y haz clic en 'Guardar Datos'.",
+      `Materia creada: ${asignatura} (${grado}) · ${officialContents.length} contenidos oficiales cargados correctamente.`,
       "success"
     );
   },
@@ -1583,7 +1714,7 @@ window.AppController = {
           </div>
           <div class="form-group">
             <label for="cfgGrado">Grado Escolar:</label>
-            <select id="cfgGrado" class="form-control">
+            <select id="cfgGrado" class="form-control" onchange="AppController.handleGradoChange(this.value)">
               ${opcionesGrado}
             </select>
           </div>
@@ -1701,6 +1832,14 @@ window.AppController = {
     `;
   },
 
+  handleGradoChange(nuevoGrado) {
+    this.state.escuela.grado = nuevoGrado;
+    const currentCourse = this.state.coursesDB[this.state.activeCourseId];
+    if (currentCourse && (currentCourse.isPendingSetup || (this.state.contenidosSinteticos || []).length <= 6 || this.state.escuela.materiaId === "matematicas" || String(this.state.escuela.materiaId).startsWith("matematicas"))) {
+      this.loadCatalogSinteticoForCurrentSubject();
+    }
+  },
+
   handleFaseChange(nuevaFaseId) {
     const fases = window.CatalogoSinteticoNEM.fases;
     const fObj = fases.find((f) => f.id === nuevaFaseId) || fases[0];
@@ -1798,7 +1937,7 @@ window.AppController = {
     this.state.escuela.turno = turno;
     this.state.escuela.cicloEscolar = cicloEscolar;
 
-    const resolvedMateriaId = window.CatalogoSinteticoNEM.resolveMateriaId(materiaId, asignatura);
+    const resolvedMateriaId = window.CatalogoSinteticoNEM.resolveMateriaId(materiaId, asignatura, grado);
     this.state.escuela.materiaId = resolvedMateriaId;
 
     const nuevosContenidosCatalogo = window.CatalogoSinteticoNEM.getContenidosForMateria(
@@ -1808,7 +1947,7 @@ window.AppController = {
     );
     const hadIncompleteCatalog =
       this.state.activeCourseId !== "matematicas_3_alr" &&
-      (this.state.contenidosSinteticos || []).length < nuevosContenidosCatalogo.length;
+      ((this.state.contenidosSinteticos || []).length < nuevosContenidosCatalogo.length || (resolvedMateriaId === "matematicas_2" && (this.state.contenidosSinteticos || []).some(c => (c.pda || "").includes("Ax²"))));
 
     // Si era una materia nueva pendiente de configurar, cambió de materia o tenía un catálogo incompleto, inicializar todos sus contenidos oficiales, diagnóstico y bloques
     if (
@@ -1879,7 +2018,8 @@ window.AppController = {
     this.saveSchoolConfig();
     const resolvedId = window.CatalogoSinteticoNEM.resolveMateriaId(
       this.state.escuela.materiaId,
-      this.state.escuela.asignatura
+      this.state.escuela.asignatura,
+      this.state.escuela.grado
     );
     const nuevos = window.CatalogoSinteticoNEM.getContenidosForMateria(
       resolvedId,
